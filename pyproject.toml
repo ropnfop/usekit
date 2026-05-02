@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "usekit"
+version = "0.1.29a"
+authors = [
+    { name = "ropnfop", email = "withropnfop@gmail.com" }
+]
+description = "Minimal input, auto path toolkit (mobile-first, Colab+Drive)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.8"
+dependencies = [
+    "PyYAML>=5.1",
+    "python-dotenv>=0.10.0",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+]
+
+[project.scripts]
+usekit = "usekit.cli.main:main"
+uk = "usekit.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/ropnfop/usekit"
+
+[project.optional-dependencies]
+full = [
+    "PyYAML>=5.1",
+    "python-dotenv>=0.10.0",
+]
+dev = [
+    "PyYAML>=5.1",
+    "python-dotenv>=0.10.0",
+    "pytest>=7.0",
+    "black>=22.0",
+    "flake8>=4.0",
+]
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.packages.find]
+exclude = ["tests*", "docs*", "examples*"]
+
+[tool.setuptools.package-data]
+usekit = [
+    ".env.example",
+    "sys/sys_yaml/sys_const.yaml",
+    "tools/editor/*.html",
+    "tools/editor/*.css",
+    "tools/editor/*.js",
+    "tools/editor/*.json",
+    "tools/editor/*.png",
+    "tools/editor/*.py",
+    "tools/editor/js2/editor/*.js",
+    "tools/editor/js2/state/*.js",
+    "tools/editor/js2/nav/*.js",
+    "tools/editor/js2/ui/*.js",
+    "tools/editor/js2/slot/*.js",
+    "tools/editor/js2/float/*.js",
+    "tools/editor/js2/popup/*.js",
+]

@@ -1,0 +1,978 @@
+/* float-pills.css — extracted from index.html inline styles */
+
+/* ─────────────────────────────────────────
+   EDITOR DRAG UX
+   Samsung Browser에서 user-drag: none을 걸면 단순 차단이 아니라
+   드래그 시작 임계값이 2단계로 늘어남:
+     - 1차 롱프레스: 블록(selection)만 생성, 팝업 없음
+     - 2차 롱프레스(블록 상태): 박스 하이라이트 → OS 팝업
+     - 2차 끌기(블록 상태): 블록 이동
+   "의도 확인" 단계가 추가되어 실수 방지 + 의도 분기 가능.
+   selection / 복사 / 붙여넣기 / 드래그 이동 모두 정상.
+───────────────────────────────────────── */
+#editor-host {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+/* ─────────────────────────────────────────
+   FLOATING STACK
+───────────────────────────────────────── */
+#floatRunTool {
+  position: fixed; z-index: 99999;
+  right: 14px; bottom: 120px;
+  display: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  touch-action: none;
+  user-select: none;
+  background: rgba(22, 28, 44, 0.88);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(120, 150, 255, 0.14);
+  border-radius: 18px;
+  padding: 4px;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.34),
+    0 2px 8px rgba(0,0,0,0.18);
+  width: 40px;
+}
+
+/* ── 공통 버튼 ── */
+#floatRunTool .fb {
+  width: 32px; height: 32px;
+  border: none; border-radius: 14px;
+  cursor: pointer; touch-action: none;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1px;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: filter 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+#floatRunTool .fb:active { filter: brightness(1.2); transform: scale(0.92); }
+
+/* ── 구분선 ── */
+#floatRunTool .fb-div {
+  height: 1px;
+  background: rgba(120,150,255,0.10);
+  margin: 2px 4px;
+}
+
+/* ── RUN 버튼 ── */
+#floatBtnRun {
+  background: linear-gradient(180deg, #4f83ff 0%, #3f6fe8 100%);
+  border: 1px solid rgba(160,190,255,0.32);
+  color: #f4f7ff;
+  box-shadow:
+    0 8px 18px rgba(55,105,230,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+}
+#floatBtnRun .fb-icon { font-size: 12px; line-height: 1; }
+#floatBtnRun .fb-label { font-size: 8px; letter-spacing: 0.04em; color: rgba(244,247,255,0.82); }
+
+/* ── OUT 버튼 ── */
+#floatBtnOutput {
+  background: rgba(40, 48, 68, 0.92);
+  border: 1px solid rgba(130,150,190,0.14);
+  color: rgba(230,236,255,0.82);
+  opacity: 0.78;
+}
+#floatBtnOutput .fb-icon { font-size: 10px; line-height: 1; }
+#floatBtnOutput .fb-label { font-size: 8px; color: rgba(230,236,255,0.55); }
+
+/* ── TOOL 버튼 ── */
+#floatBtnTool {
+  background: rgba(40, 48, 68, 0.92);
+  border: 1px solid rgba(130,150,190,0.14);
+  color: rgba(230,236,255,0.82);
+  opacity: 0.72;
+  filter: saturate(0.9);
+}
+#floatBtnTool .fb-icon { font-size: 10px; line-height: 1; }
+#floatBtnTool .fb-label { font-size: 8px; color: rgba(230,236,255,0.50); }
+
+/* ── 활성 상태 ── */
+#floatBtnOutput.is-active {
+  opacity: 1;
+  background: rgba(60,80,120,0.92);
+  border-color: rgba(130,160,255,0.28);
+  color: rgba(230,236,255,0.95);
+}
+#floatBtnTool.is-active {
+  opacity: 1;
+  filter: none;
+  background: rgba(60,80,120,0.92);
+  border-color: rgba(130,160,255,0.28);
+  color: rgba(230,236,255,0.95);
+}
+
+/* ── 가로 레이아웃 (toggle) ── */
+#floatRunTool.is-horizontal {
+  flex-direction: row;
+  width: auto;
+  /* 컨테이너는 자식 너비 합 + padding으로 자동 산정 */
+}
+#floatRunTool.is-horizontal .fb-div {
+  width: 1px; height: auto;
+  margin: 4px 2px;
+}
+
+/* ─────────────────────────────────────────
+   TOOL POPUP
+───────────────────────────────────────── */
+#floatToolPanel {
+  position: fixed; z-index: 99998;
+  width: 148px;
+  max-width: 148px;
+  background: rgba(13, 18, 30, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(110,135,210,0.14);
+  border-radius: 22px;
+  box-shadow:
+    0 16px 36px rgba(0,0,0,0.22),
+    0 4px 10px rgba(0,0,0,0.08);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+#floatToolPanel .tp-header {
+  padding: 10px 16px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(210,220,255,0.42);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  text-transform: uppercase;
+}
+#floatToolPanel .tp-btn {
+  padding: 14px 16px;
+  background: none; border: none;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  color: rgba(245,248,255,0.92);
+  text-align: left; font-size: 0.86rem;
+  cursor: pointer; touch-action: manipulation;
+  display: flex; align-items: center; gap: 12px;
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+#floatToolPanel .tp-btn:first-of-type { border-top: none; }
+#floatToolPanel .tp-btn:active { background: rgba(90,120,220,0.08); }
+/* Edit 그룹 — 텍스트 편집이라 키보드 유지 (Copy Tool과 동일 패턴) */
+#floatTpCaseTransform,
+#floatTpTabToSpace,
+#floatTpTrimTrailing {
+  touch-action: none;
+  user-select: none;
+}
+#floatToolPanel .tp-icon {
+  width: 16px; text-align: center;
+  font-size: 11px; flex-shrink: 0;
+  color: rgba(130,160,255,0.70);
+}
+#floatToolPanel .tp-sep {
+  height: 1px;
+  background: rgba(255,255,255,0.05);
+  margin: 2px 0;
+}
+#floatTpHide {
+  color: rgba(235,240,255,0.80);
+}
+#floatTpHide .tp-icon {
+  opacity: 0.72;
+  color: rgba(235,240,255,0.60);
+}
+
+/* ── SQL pill 컨테이너 ──
+   독립 토글: 풋터 SQL VIEW 버튼이 인라인 display:flex로 켜고 끔
+   기본 위치: 상단 (Python pill과 세로로 겹치지 않도록) */
+#floatSqlTool {
+  position: fixed; z-index: 99999;
+  right: 14px; top: 250px;
+  display: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  touch-action: none;
+  user-select: none;
+  background: rgba(28, 24, 18, 0.90);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(220, 170, 90, 0.18);
+  border-radius: 18px;
+  padding: 4px;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.40),
+    0 2px 8px rgba(120,80,20,0.14);
+  width: 40px;
+  transition: opacity 0.18s, transform 0.18s;
+}
+
+/* ── SQL pill 공통 버튼 ── */
+#floatSqlTool .fb {
+  width: 32px; height: 32px;
+  border: none; border-radius: 14px;
+  cursor: pointer; touch-action: none;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1px;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: filter 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+#floatSqlTool .fb:active { filter: brightness(1.15); transform: scale(0.92); }
+#floatSqlTool .fb-div {
+  height: 1px;
+  background: rgba(220,170,90,0.12);
+  margin: 2px 4px;
+}
+
+/* ── SQL 메인 (골든 그라디언트) ── */
+#floatBtnSql {
+  background: linear-gradient(180deg, #e8b15a 0%, #d09028 100%);
+  border: 1px solid rgba(255,210,140,0.32);
+  color: #2a1d08;
+  box-shadow:
+    0 8px 18px rgba(180,125,30,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.18);
+}
+#floatBtnSql .fb-icon { font-size: 12px; line-height: 1; font-weight: 800; }
+#floatBtnSql .fb-label { font-size: 8px; color: rgba(42,29,8,0.85); font-weight: 800; }
+
+/* ── GRID 버튼 ── */
+#floatBtnGrid {
+  background: rgba(48, 38, 24, 0.92);
+  border: 1px solid rgba(180,140,80,0.16);
+  color: rgba(245,228,196,0.82);
+  opacity: 0.78;
+}
+#floatBtnGrid .fb-icon { font-size: 10px; line-height: 1; }
+#floatBtnGrid .fb-label { font-size: 8px; color: rgba(245,228,196,0.58); }
+#floatBtnGrid.is-active {
+  opacity: 1;
+  background: rgba(80,60,30,0.92);
+  border-color: rgba(220,170,90,0.32);
+  color: rgba(252,238,210,0.95);
+}
+
+/* ── SQL TOOL 버튼 ── */
+#floatBtnSqlTool {
+  background: rgba(48, 38, 24, 0.92);
+  border: 1px solid rgba(180,140,80,0.16);
+  color: rgba(245,228,196,0.82);
+  opacity: 0.72;
+  filter: saturate(0.9);
+}
+#floatBtnSqlTool .fb-icon { font-size: 10px; line-height: 1; }
+#floatBtnSqlTool .fb-label { font-size: 8px; color: rgba(245,228,196,0.52); }
+
+/* ── 그리드 열린 상태에서 pill 톤다운 ── */
+#floatSqlTool.is-grid-open {
+  opacity: 0.55;
+  transform: scale(0.92);
+}
+#floatSqlTool.is-grid-open:active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ── 가로 레이아웃 (toggle) — Python pill과 동일 패턴 ── */
+#floatSqlTool.is-horizontal {
+  flex-direction: row;
+  width: auto;
+}
+#floatSqlTool.is-horizontal .fb-div {
+  width: 1px; height: auto;
+  margin: 4px 2px;
+}
+
+/* ═══════════════════════════════════════
+   SQL TOOL POPUP — Python의 floatToolPanel과
+   동일 구조, 골든 테마로
+═══════════════════════════════════════ */
+#floatSqlToolPanel {
+  position: fixed; z-index: 99998;
+  width: 160px;
+  max-width: 160px;
+  background: rgba(22, 18, 12, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(220, 170, 90, 0.18);
+  border-radius: 22px;
+  box-shadow:
+    0 16px 36px rgba(0,0,0,0.28),
+    0 4px 10px rgba(80,50,10,0.14);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+#floatSqlToolPanel .stp-header {
+  padding: 10px 16px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(240,200,140,0.55);
+  border-bottom: 1px solid rgba(220,170,90,0.10);
+  text-transform: uppercase;
+}
+#floatSqlToolPanel .stp-btn {
+  padding: 14px 16px;
+  background: none; border: none;
+  border-top: 1px solid rgba(220,170,90,0.08);
+  color: rgba(250,235,200,0.92);
+  text-align: left; font-size: 0.86rem;
+  cursor: pointer; touch-action: manipulation;
+  display: flex; align-items: center; gap: 12px;
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  font-family: inherit;
+}
+#floatSqlToolPanel .stp-btn:first-of-type { border-top: none; }
+#floatSqlToolPanel .stp-btn:active { background: rgba(220,170,90,0.10); }
+#floatSqlToolPanel .stp-icon {
+  width: 16px; text-align: center;
+  font-size: 11px; flex-shrink: 0;
+  color: rgba(240,200,140,0.70);
+}
+#floatSqlToolPanel .stp-sep {
+  height: 1px;
+  background: rgba(220,170,90,0.10);
+  margin: 2px 0;
+}
+#floatSqlToolPanel .stp-btn-exit {
+  color: rgba(255,210,180,0.82);
+}
+#floatSqlToolPanel .stp-btn-exit .stp-icon {
+  opacity: 0.78;
+  color: rgba(255,180,140,0.72);
+}
+
+/* ═════════════════════════════════════════
+   CLIPBOARD pill — 민트 테마
+   Python pill(파랑)·SQL pill(골든)과 시각 대칭
+═════════════════════════════════════════ */
+#floatClipTool {
+  position: fixed; z-index: 99999;
+  right: 14px; top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  touch-action: none;
+  user-select: none;
+  background: rgba(18, 28, 26, 0.90);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(120, 200, 180, 0.18);
+  border-radius: 18px;
+  padding: 4px;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.38),
+    0 2px 8px rgba(40,120,100,0.14);
+  width: 40px;
+  transition: opacity 0.18s;
+}
+
+/* 공통 버튼 */
+#floatClipTool .fb {
+  width: 32px; height: 32px;
+  border: none; border-radius: 14px;
+  cursor: pointer; touch-action: none;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1px;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: filter 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+#floatClipTool .fb:active { filter: brightness(1.15); transform: scale(0.92); }
+#floatClipTool .fb-div {
+  height: 1px;
+  background: rgba(120,200,180,0.12);
+  margin: 2px 4px;
+}
+
+/* COPY 메인 (민트 그라디언트) */
+#floatBtnClipCopy {
+  background: linear-gradient(180deg, #52c4a8 0%, #3a8f7a 100%);
+  border: 1px solid rgba(160,230,210,0.32);
+  color: #0a1f1a;
+  box-shadow:
+    0 8px 18px rgba(40,140,115,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.18);
+}
+#floatBtnClipCopy .fb-icon { font-size: 12px; line-height: 1; font-weight: 800; }
+#floatBtnClipCopy .fb-label { font-size: 8px; color: rgba(10,31,26,0.85); font-weight: 800; }
+
+/* ALL 보조 */
+#floatBtnClipPaste {
+  background: rgba(120,200,180,0.07);
+  border: 1px solid rgba(120,200,180,0.10);
+  color: rgba(180,230,210,0.70);
+}
+#floatBtnClipPaste .fb-icon { font-size: 10px; line-height: 1; }
+#floatBtnClipPaste .fb-label { font-size: 8px; color: rgba(200,240,225,0.58); }
+
+/* TOOL 보조 (톤다운) */
+#floatBtnClipTool {
+  background: rgba(120,200,180,0.05);
+  border: 1px solid rgba(120,200,180,0.08);
+  color: rgba(160,210,195,0.62);
+}
+#floatBtnClipTool .fb-icon { font-size: 10px; line-height: 1; }
+#floatBtnClipTool .fb-label { font-size: 8px; color: rgba(200,240,225,0.52); }
+
+/* 가로 레이아웃 (toggle) */
+#floatClipTool.is-horizontal {
+  flex-direction: row;
+  width: auto;
+}
+#floatClipTool.is-horizontal .fb-div {
+  width: 1px; height: auto;
+  margin: 4px 2px;
+}
+
+/* ═════════════════════════════════════════
+   CLIPBOARD TOOL POPUP
+═════════════════════════════════════════ */
+#floatClipToolPanel {
+  position: fixed; z-index: 99998;
+  width: 160px;
+  max-width: 160px;
+  background: rgba(14, 22, 20, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(120, 200, 180, 0.16);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.50), 0 4px 12px rgba(40,120,100,0.16);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+#floatClipToolPanel .ctp-header {
+  padding: 10px 16px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(180,230,210,0.48);
+  border-bottom: 1px solid rgba(120,200,180,0.08);
+  text-transform: uppercase;
+}
+#floatClipToolPanel .ctp-btn {
+  padding: 14px 16px;
+  background: none; border: none;
+  border-top: 1px solid rgba(120,200,180,0.08);
+  color: rgba(220,245,235,0.92);
+  text-align: left; font-size: 0.86rem;
+  cursor: pointer; touch-action: none;
+  user-select: none;
+  display: flex; align-items: center; gap: 12px;
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+#floatClipToolPanel .ctp-btn:first-of-type { border-top: none; }
+#floatClipToolPanel .ctp-btn:active { background: rgba(120,200,180,0.10); }
+/* List는 모달 열리며 키보드 내려가는 게 자연스러움 → 기본 터치 동작 복원 */
+#floatCtpList { touch-action: manipulation; }
+#floatClipToolPanel .ctp-icon {
+  width: 16px; text-align: center;
+  font-size: 11px; flex-shrink: 0;
+  color: rgba(140,210,190,0.75);
+}
+#floatClipToolPanel .ctp-sep {
+  height: 1px;
+  background: rgba(120,200,180,0.08);
+  margin: 2px 0;
+}
+
+/* ═════════════════════════════════════════
+   MENU TOOL pill — 퍼플 테마 (플로팅 허브)
+═════════════════════════════════════════ */
+#floatMenuTool {
+  position: fixed; z-index: 99999;
+  right: 8px; bottom: 120px;
+  display: none;
+  touch-action: none;
+  user-select: none;
+  width: 34px; height: 34px;
+  transition: opacity 0.18s;
+}
+
+/* 공통 버튼 */
+#floatMenuTool .fb {
+  width: 34px; height: 34px;
+  border: none; border-radius: 50%;
+  cursor: pointer; touch-action: none;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0;
+  transition: filter 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+}
+#floatMenuTool .fb:active { filter: brightness(0.88); transform: scale(0.92); }
+
+/* MENU 메인 — 차콜 원 (OFF 스타일) */
+#floatBtnMenu {
+  background: rgba(40, 40, 40, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.22);
+}
+#floatBtnMenu .fb-icon { display: none; }
+#floatBtnMenu .fb-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.90);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.50);
+}
+
+/* 가로 레이아웃 (향후 확장용) */
+#floatMenuTool.is-horizontal { flex-direction: row; width: auto; }
+
+/* ═════════════════════════════════════════
+   MENU TOOL POPUP (허브 메뉴)
+═════════════════════════════════════════ */
+#floatMenuToolPanel {
+  position: fixed; z-index: 99998;
+  width: 170px;
+  max-width: 170px;
+  background: rgba(20, 16, 28, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(170, 140, 220, 0.16);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.50), 0 4px 12px rgba(100,65,160,0.16);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+#floatMenuToolPanel .mtp-header {
+  padding: 10px 16px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(220,200,245,0.48);
+  border-bottom: 1px solid rgba(170,140,220,0.08);
+  text-transform: uppercase;
+}
+#floatMenuToolPanel .mtp-btn {
+  padding: 14px 16px;
+  background: none; border: none;
+  border-top: 1px solid rgba(170,140,220,0.08);
+  color: rgba(235,225,250,0.92);
+  text-align: left; font-size: 0.86rem;
+  cursor: pointer; touch-action: manipulation;
+  display: flex; align-items: center; gap: 12px;
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+#floatMenuToolPanel .mtp-btn:first-of-type { border-top: none; }
+#floatMenuToolPanel .mtp-btn:active { background: rgba(170,140,220,0.10); }
+#floatMenuToolPanel .mtp-btn.is-active {
+  background: rgba(170,140,220,0.14);
+  color: rgba(255,240,255,0.98);
+}
+#floatMenuToolPanel .mtp-icon {
+  width: 16px; text-align: center;
+  font-size: 11px; flex-shrink: 0;
+  color: rgba(190,160,235,0.75);
+}
+#floatMenuToolPanel .mtp-sep {
+  height: 1px;
+  background: rgba(170,140,220,0.08);
+  margin: 2px 0;
+}
+
+/* ═════════════════════════════════════════
+   SQL GRID PANEL (흰색 베이스)
+═════════════════════════════════════════ */
+#sqlGridOverlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 8000; background: rgba(0,0,0,0.45);
+  display: none;
+  align-items: flex-end; justify-content: center;
+}
+#sqlGridOverlay.is-open { display: flex; }
+
+#sqlGridPanel {
+  width: 100%; height: 72vh;
+  display: flex; flex-direction: column;
+  background: #ffffff;
+  color: #1a1f2e;
+  border-top: 2px solid #d99830;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  overflow: hidden;
+}
+
+/* 헤더 */
+.sgp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.5rem 0.75rem 0.5rem 0.9rem;
+  background: linear-gradient(180deg, #fdf8f0 0%, #f7efde 100%);
+  border-radius: 16px 16px 0 0;
+  border-bottom: 1px solid #ead7b3;
+  flex-shrink: 0;
+}
+.sgp-title {
+  font-size: 0.70rem; font-weight: 800; letter-spacing: 0.08em;
+  color: #b8861f;
+  display: flex; align-items: center; gap: 6px;
+}
+.sgp-title .dot { font-size: 10px; }
+.sgp-actions { display: flex; gap: 0.4rem; align-items: center; }
+.sgp-actions button {
+  font-size: 0.70rem; padding: 0.20rem 0.65rem;
+  border-radius: 6px; border: 1px solid #d8c89a;
+  background: #fff; color: #8b6f2f;
+  cursor: pointer; letter-spacing: 0.02em;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.sgp-actions button.sgp-close {
+  border-color: rgba(217,152,48,0.45);
+  background: rgba(217,152,48,0.10);
+  color: #b8861f; font-weight: 700;
+}
+
+/* 메타 */
+.sgp-meta {
+  padding: 6px 12px;
+  background: #faf6ec;
+  border-bottom: 1px solid #ead7b3;
+  font-size: 11px; color: #6a5a30;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; flex-shrink: 0;
+}
+.sgp-meta .query {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 600; color: #4a3818;
+}
+.sgp-meta .stats {
+  white-space: nowrap; color: #8b6f2f; font-size: 10px;
+  flex-shrink: 0; font-weight: 600;
+}
+
+/* 본체 */
+.sgp-body {
+  flex: 1 1 auto; min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #ffffff;
+  -webkit-overflow-scrolling: touch;
+}
+table.sgp-grid {
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.5;
+  min-width: 100%;
+}
+table.sgp-grid thead {
+  position: sticky; top: 0; z-index: 2;
+  background: #f4ebd4;
+}
+table.sgp-grid thead th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 700;
+  color: #6a4a18;
+  border-bottom: 2px solid #d99830;
+  border-right: 1px solid #ead7b3;
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+table.sgp-grid thead th:last-child { border-right: none; }
+table.sgp-grid thead th.num-col { text-align: right; }
+table.sgp-grid thead th .col-type {
+  display: block;
+  font-size: 9px; font-weight: 500;
+  color: #b8861f; text-transform: lowercase;
+  letter-spacing: 0; margin-top: 1px;
+}
+table.sgp-grid tbody td {
+  padding: 7px 12px;
+  border-bottom: 1px solid #f0e8d8;
+  border-right: 1px solid #f5eed9;
+  color: #2a2010;
+  white-space: nowrap;
+  max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis;
+}
+table.sgp-grid tbody td:last-child { border-right: none; }
+table.sgp-grid tbody tr:nth-child(even) { background: #f6efde; }
+table.sgp-grid tbody tr:active { background: #f0e2b5; }
+
+/* Wrap 모드 — 긴 값도 전체 표시 */
+#sqlGridPanel.is-wrap table.sgp-grid tbody td {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 420px;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Wrap 토글 버튼 활성 상태 */
+#sgpBtnWrap.is-active {
+  background: rgba(220, 170, 90, 0.22);
+  border-color: rgba(220, 170, 90, 0.55);
+  color: #8b6f2f;
+}
+
+table.sgp-grid .rownum {
+  background: #f7efde !important;
+  color: #a8862c; font-weight: 600;
+  text-align: right;
+  width: 36px; min-width: 36px;
+  padding-right: 10px;
+}
+table.sgp-grid thead th.rownum {
+  background: #ead7b3 !important;
+  text-align: right;
+}
+table.sgp-grid td.is-null {
+  color: #b8861f; font-style: italic;
+  opacity: 0.65;
+}
+table.sgp-grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 푸터 */
+.sgp-footer {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  background: #faf6ec;
+  border-top: 1px solid #ead7b3;
+  font-size: 10px;
+  color: #8b6f2f;
+  display: flex; justify-content: space-between; align-items: center;
+  letter-spacing: 0.04em;
+}
+.sgp-footer .sgp-fleft { display: flex; gap: 10px; align-items: center; }
+.sgp-footer .sgp-badge {
+  background: rgba(217,152,48,0.12);
+  border: 1px solid rgba(217,152,48,0.28);
+  color: #8b6f2f;
+  padding: 1px 6px; border-radius: 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
+}
+/* verb별 뱃지 색 */
+.sgp-footer .sgp-badge[data-verb="SELECT"] { background: rgba(217,152,48,0.12); border-color: rgba(217,152,48,0.28); color: #8b6f2f; }
+.sgp-footer .sgp-badge[data-verb="INSERT"] { background: rgba(70,160,80,0.12); border-color: rgba(70,160,80,0.32); color: #2f7a3a; }
+.sgp-footer .sgp-badge[data-verb="UPDATE"] { background: rgba(60,130,200,0.12); border-color: rgba(60,130,200,0.32); color: #2c6aaa; }
+.sgp-footer .sgp-badge[data-verb="DELETE"] { background: rgba(200,80,80,0.12); border-color: rgba(200,80,80,0.32); color: #a23a3a; }
+.sgp-footer .sgp-badge[data-verb="CREATE"], 
+.sgp-footer .sgp-badge[data-verb="DROP"],
+.sgp-footer .sgp-badge[data-verb="ALTER"] { background: rgba(140,90,180,0.12); border-color: rgba(140,90,180,0.32); color: #7a4ab5; }
+.sgp-footer .sgp-badge[data-verb="ERROR"] { background: rgba(200,60,60,0.18); border-color: rgba(200,60,60,0.45); color: #c12d2d; }
+
+/* ── 상태: empty (초기) ── */
+.sgp-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; padding: 40px 20px;
+  color: #b8861f; opacity: 0.55;
+  text-align: center;
+}
+.sgp-empty-icon { font-size: 44px; margin-bottom: 12px; opacity: 0.5; }
+.sgp-empty-text { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+.sgp-empty-hint { font-size: 11px; color: #6a5a30; opacity: 0.7; line-height: 1.5; }
+.sgp-empty-hint b { color: #b8861f; font-weight: 700; }
+
+/* ── 상태: loading ── */
+.sgp-loading {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; padding: 40px 20px;
+  color: #b8861f;
+}
+.sgp-spinner {
+  width: 28px; height: 28px;
+  border: 3px solid rgba(217,152,48,0.18);
+  border-top-color: #d99830;
+  border-radius: 50%;
+  animation: sgp-spin 0.7s linear infinite;
+  margin-bottom: 14px;
+}
+@keyframes sgp-spin { to { transform: rotate(360deg); } }
+.sgp-loading-text { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+
+/* ── 상태: DML 성공 (행 반환 없음) ── */
+.sgp-dml-ok {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; padding: 40px 20px;
+  color: #2f7a3a; text-align: center;
+}
+.sgp-dml-icon { font-size: 38px; margin-bottom: 10px; }
+.sgp-dml-text { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 4px; }
+.sgp-dml-sub { font-size: 11px; color: #6a5a30; opacity: 0.8; }
+
+/* ── 상태: 에러 ── */
+.sgp-error {
+  padding: 16px 18px;
+  background: #fff7f7;
+  border-left: 4px solid #c12d2d;
+  margin: 14px;
+  border-radius: 6px;
+  font-family: inherit;
+}
+.sgp-error-title {
+  font-size: 12px; font-weight: 800;
+  color: #a02020; letter-spacing: 0.06em;
+  text-transform: uppercase; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.sgp-error-msg {
+  font-size: 12px; color: #5a1818;
+  white-space: pre-wrap; word-break: break-word;
+  line-height: 1.5;
+}
+.sgp-error-trace {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: #fdeded;
+  border-radius: 4px;
+  font-size: 10px; color: #7a2828;
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 180px; overflow: auto;
+  line-height: 1.45;
+}
+
+/* ── 토스트 (그리드 패널 안 하단 중앙) ── */
+.sgp-toast {
+  position: absolute;
+  left: 50%; bottom: 56px;
+  transform: translateX(-50%);
+  background: rgba(40, 30, 12, 0.94);
+  color: #fdf4dd;
+  padding: 9px 18px;
+  border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.32);
+  white-space: nowrap;
+  max-width: calc(100% - 32px);
+  overflow: hidden; text-overflow: ellipsis;
+  z-index: 50;
+  opacity: 0; transform: translateX(-50%) translateY(8px);
+  animation: sgp-toast-in 0.18s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes sgp-toast-in {
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.sgp-toast.sgp-toast-fade {
+  opacity: 0; transform: translateX(-50%) translateY(-4px);
+  transition: opacity 0.25s, transform 0.25s;
+}
+.sgp-toast-ok {
+  background: rgba(40, 90, 50, 0.94);
+  color: #e6f6e8;
+}
+.sgp-toast-warn {
+  background: rgba(160, 50, 50, 0.94);
+  color: #fde6e6;
+}
+
+/* 패널 헤더: flex로 타이틀+닫기 배치 */
+.tp-header, .stp-header, .ctp-header, .mtp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+/* 패널 닫기 버튼 */
+.float-panel-close {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.4;
+  font-size: 14px;
+  padding: 0 2px;
+  cursor: pointer;
+  line-height: 1;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.float-panel-close:active {
+  opacity: 0.8;
+}
+
+/* ── Run OUTPUT Panel (mirrors SQL Grid pattern) ── */
+#runPanel {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 8000; background: transparent;
+  display: none;
+  align-items: flex-end; justify-content: center;
+  pointer-events: none;
+}
+#runPanel.is-open { display: flex; }
+#runPanel.is-open #runPanelInner { pointer-events: auto; }
+
+#runPanelInner {
+  width: 100%; height: 72vh;
+  display: flex; flex-direction: column;
+  background: #0d1117; color: #c9d1d9;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.82rem;
+  border-top: 2px solid #4caf50;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+.rp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.45rem 0.75rem 0.45rem 0.9rem;
+  background: #111820;
+  border-radius: 16px 16px 0 0;
+  border-bottom: 1px solid #1e2830;
+  flex-shrink: 0;
+}
+.rp-title {
+  font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em;
+  color: #4caf50;
+  display: flex; align-items: center; gap: 5px;
+}
+.rp-actions { display: flex; gap: 0.4rem; align-items: center; }
+.rp-actions button {
+  font-size: 0.72rem; padding: 0.18rem 0.65rem;
+  border-radius: 6px; border: 1px solid #2a3340;
+  background: transparent; color: #7a8a9a;
+  cursor: pointer; letter-spacing: 0.02em;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.rp-actions button.rp-close {
+  border-color: rgba(76,175,80,0.35);
+  background: rgba(76,175,80,0.12);
+  color: #4caf50; font-weight: 600;
+}
+#btnRunEdit.is-active {
+  border-color: rgba(76,175,80,0.5);
+  background: rgba(76,175,80,0.18);
+  color: #4caf50; font-weight: 600;
+}
+
+.rp-body {
+  flex: 1; overflow-y: auto;
+  padding: 0.6rem 0.9rem 1rem;
+  white-space: pre-wrap; word-break: break-all;
+  line-height: 1.65;
+  overscroll-behavior: contain;
+}

@@ -1,0 +1,121 @@
+/* USEKIT Editor Theme - Tuned Navy v2
+   Deepened shell + slightly darker editor + stronger active line
+*/
+
+:root {
+  /* Shell */
+  --bg-base:    #152238;
+  --bg-surface: #223553;
+  --bg-raised:  #2d456b;
+  --bg-hover:   #37527c;
+  --bg-active:  #456493;
+
+  /* Text */
+  --tx-primary: #eef4ff;
+  --tx-muted:   #b6c6e2;
+  --tx-dim:     #8098bc;
+
+  /* Borders / shadow */
+  --bd:        rgba(7, 16, 30, 0.30);
+  --bd-strong: rgba(5, 12, 24, 0.48);
+  --sh-sm:  0 2px 8px rgba(0,0,0,0.20);
+  --sh-md:  0 10px 28px rgba(0,0,0,0.28);
+  --sh-lg:  0 18px 52px rgba(0,0,0,0.36);
+
+  /* Accent */
+  --ac-blue:    #78adff;
+  --ac-blue-bg: rgba(120,173,255,0.20);
+  --ac-blue-bd: rgba(120,173,255,0.54);
+  --floppy-fill:   #dce8ff;
+  --save-dirty:    #3a7aef;
+  --floppy-dot:    #2e4a78;
+
+  --ac-purple:    #c792ea;
+  --ac-purple-bg: rgba(199,146,234,0.16);
+  --ac-purple-bd: rgba(199,146,234,0.42);
+
+  --ac-red:     #ff8b8b;
+  --ac-green:   #56df8b;
+  --ac-amber:   #f5c04e;
+  --ac-red-bg:  rgba(255,139,139,0.16);
+  --ac-red-bd:  rgba(255,139,139,0.38);
+
+  /* Editor */
+  --cm-bg:         #eceff3;
+  --cm-text:       #202632;
+  --cm-cursor:     #5f97f0;
+  --cm-selected:   rgba(95,151,240,0.18);
+  --cm-activeline: rgba(110,168,254,0.14);
+  --cm-gutter-bg:  #e7eaef;
+  --cm-gutter-txt: #aab2bf;
+  --cm-gutter-bd:  rgba(16,24,40,0.05);
+
+  /* Active states */
+  --ac-active-bg: rgba(120,173,255,0.22);
+  --ac-active-bd: rgba(120,173,255,0.58);
+  --ac-active-tx: #8ab8ff;
+  --ac-green-tx:  #56df8b;
+
+  /* LOC / SAVE state — dirty */
+  --st-dirty-bd:   rgba(120,173,255,0.65);
+  --st-dirty-bg:   rgba(120,173,255,0.10);
+  --st-dirty-tx:   #8ab8ff;
+
+  /* Float OFF button */
+  --float-off-bg:  rgba(50, 50, 60, 0.75);
+  --float-off-tx:  rgba(255, 255, 255, 0.95);
+}
+
+#editor-host {
+  --bd: rgba(10, 18, 32, 0.16);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.15);
+}
+
+.settings-drawer {
+  --bg-surface: #223553;
+  --bg-raised:  #2d456b;
+  --bg-hover:   #37527c;
+  --bg-active:  #456493;
+  --tx-primary: #eef4ff;
+  --tx-muted:   #b6c6e2;
+  --tx-dim:     #8098bc;
+  --bd: rgba(7, 16, 30, 0.30);
+  --bd-strong: rgba(5, 12, 24, 0.48);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.36);
+}
+
+/* Syntax */
+.tok-keyword{color:#c792ea}
+.tok-operator{color:#6fc3df}
+.tok-variableName{color:#dbe2ff}
+.tok-string{color:#1f7a53}
+.tok-number{color:#f9a87c}
+.tok-comment{color:#7a8899;font-style:italic}
+.tok-typeName{color:#7ec8e3}
+.tok-className{color:#ffcb6b}
+.tok-propertyName{color:#82aaff}
+.tok-namespace{color:#85e89d}
+.tok-punctuation{color:#596372}
+.tok-literal{color:#1f7a53}
+.tok-atom{color:#f9a87c}
+.tok-bool{color:#f9a87c}
+.tok-meta{color:#8a93a3}
+.tok-invalid{color:#ff6b6b;text-decoration:underline}
+
+
+
+/* 투명 버튼 */
+.cbtn {
+  background: transparent;
+  border-color: rgba(255,255,255,0.18);
+}
+.cbtn:active {
+  background: rgba(255,255,255,0.15);
+}
+
+/* 풋터 Save 버튼 — dirty 오버라이드 */
+#btnFooterSave.is-dirty {
+  background: var(--ac-blue-bg);
+  border-color: var(--ac-blue-bd);
+  color: var(--ac-blue);
+}

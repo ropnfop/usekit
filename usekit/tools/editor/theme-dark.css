@@ -1,0 +1,96 @@
+/* Path: usekit/tools/editor/theme-dark.css
+ * ---------------------------------------------------------------------------------------------
+ * Created by: THE Little Prince, in harmony with ROP and FOP
+ * Purpose: Dark theme variables — all color tokens for the dark skin
+ * ---------------------------------------------------------------------------------------------
+ */
+
+:root {
+  /* Backgrounds */
+  --bg-base:    #0b0f14;
+  --bg-surface: #111827;
+  --bg-raised:  #1c2638;
+  --bg-hover:   #243044;
+  --bg-active:  #2d3d57;
+
+  /* Text */
+  --tx-primary: #e8edf6;
+  --tx-muted:   #8a93a3;
+  --tx-dim:     #4a5568;
+
+  /* Accent */
+  --ac-blue:    #6ea8fe;
+  --ac-blue-bg: rgba(110,168,254,0.12);
+  --ac-blue-bd: rgba(110,168,254,0.40);
+  --floppy-fill:   #c8d8f0;
+  --save-dirty:    #4d8fff;
+  --floppy-dot:    #3d5070;
+  --ac-red:     #ff6b6b;
+  --ac-green:   #4ade80;
+  --ac-amber:   #fbbf24;
+  --ac-purple:    #c084fc;
+  --ac-purple-bg: rgba(192,132,252,0.14);
+  --ac-purple-bd: rgba(192,132,252,0.45);
+
+  /* Border */
+  --bd:         rgba(110,168,254,0.12);
+  --bd-strong:  rgba(110,168,254,0.28);
+
+  /* Shadow */
+  --sh-sm:  0 2px 8px rgba(0,0,0,0.32);
+  --sh-md:  0 8px 24px rgba(0,0,0,0.40);
+  --sh-lg:  0 16px 48px rgba(0,0,0,0.50);
+
+  /* CM colors */
+  --cm-bg:         #0b0f14;
+  --cm-text:       #e8edf6;
+  --cm-cursor:     #7cb9ff;
+  --cm-selected:   rgba(110,168,254,0.20);
+  --cm-gutter-bg:  #0e131a;
+  --cm-gutter-txt: #3d4858;
+  --cm-gutter-bd:  rgba(110,168,254,0.09);
+
+  --ac-red-bg:  rgba(255,107,107,0.10);
+  --ac-red-bd:  rgba(255,107,107,0.35);
+  --cm-activeline: rgba(110,168,254,0.10);
+
+  /* Active button state */
+  --ac-active-bg: rgba(110,168,254,0.18);
+  --ac-active-bd: rgba(110,168,254,0.50);
+  --ac-active-tx: #6ea8fe;
+  --ac-green-tx:  #4ade80;
+
+  /* LOC / SAVE state — dirty */
+  --st-dirty-bd:   rgba(110,168,254,0.55);
+  --st-dirty-bg:   rgba(110,168,254,0.08);
+  --st-dirty-tx:   #6ea8fe;
+
+  /* Float OFF button */
+  --float-off-bg:  rgba(40, 40, 40, 0.50);
+  --float-off-tx:  rgba(255, 255, 255, 0.92);
+}
+
+/* Syntax highlighting — JS에서 _darkHighlightStyle로 직접 주입 (CSS 불필요) */
+.tok-keyword        { color: #c792ea; }
+.tok-operator       { color: #6fc3df; }
+.tok-variableName   { color: #e8edf6; }
+.tok-string         { color: #a8e6a3; }
+.tok-number         { color: #f9a87c; }
+.tok-comment        { color: #6a7d8a; font-style: italic; }
+.tok-typeName       { color: #7ec8e3; }
+.tok-className      { color: #ffcb6b; }
+.tok-propertyName   { color: #82aaff; }
+.tok-namespace      { color: #85e89d; }
+.tok-punctuation    { color: #89ddff; }
+.tok-literal        { color: #a8e6a3; }
+.tok-atom           { color: #f9a87c; }
+.tok-bool           { color: #f9a87c; }
+.tok-meta           { color: #8a93a3; }
+.tok-invalid        { color: #ff6b6b; text-decoration: underline; }
+
+/* 풋터 Save 버튼 — dirty 오버라이드 */
+#btnFooterSave.is-dirty {
+  background: var(--ac-blue-bg);
+  border-color: var(--ac-blue-bd);
+  color: var(--ac-blue);
+}

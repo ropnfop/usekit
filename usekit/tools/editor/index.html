@@ -1,0 +1,1330 @@
+<!-- Path: usekit/tools/editor/index.html
+* -----------------------------------------------------------------------------------------------
+* Created by: THE Little Prince, in harmony with ROP and FOP
+* Purpose: Editor
+*---------------------------------------------------------------------------------------------
+-->
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <!-- DEV 캐시 방지: DEV_MODE에서 새로고침 시 항상 최신 파일 로드 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>USEKIT Editor</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ⏎ 엔터, ⇧ 시프트 심볼 굵게 */
+        #kbEnter2, #kpShift, #kpShift2 {
+            -webkit-text-stroke: 0.5px currentColor;
+            font-weight: 700;
+        }
+        .cbtn:active {
+            background: var(--bg-active);
+            transform: scale(0.88);
+            transition: transform 0.06s ease, background 0.06s ease;
+        }
+        .cbtn {
+            transition: transform 0.1s ease, background 0.1s ease;
+        }
+        /* 탭 포커스로 OS 키보드 유발 방지 — 모든 앱 버튼은 탭 순서에서 제외 */
+        .footer-btn, .header-btn, .header-settings-btn,
+        .cbtn, .slot-arrow, .btn, .kp-more {
+            -webkit-user-select: none;
+            user-select: none;
+        }
+    </style>
+    <link rel="stylesheet" href="theme-dark.css?v=0.2.0" id="themeLink">
+    <link rel="stylesheet" href="float-pills.css?v=0.2.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b1220">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Fira+Code:wght@400;500&family=Source+Code+Pro:wght@400;500&family=Nanum+Gothic+Coding&family=Inconsolata:wght@400;500&display=swap">
+    <!-- eruda debug console (enable via Settings > DEBUG) -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/eruda"></script> -->
+    <!-- <script>eruda.init();</script> -->
+    <script src="cm6.bundle.js?v=0.2.0"></script>
+
+</head>
+<body>
+
+    <div class="usekit-wrapper">
+        <div class="editor-app layout-b">
+            <header class="header-section">
+                <div class="header-inner">
+                    <div class="header-block block-info">
+                        <div class="brand-card card" id="brand-toggle">
+                            <div class="brand">
+                                <div class="brand-line">USEKIT</div>
+                                <div class="brand-line">EDITOR</div>
+                                <div class="brand-line brand-touch">TOUCH</div>
+                            </div>
+                        </div>
+
+                        <div class="meta-card card">
+                            <div class="meta-line">
+                                <span class="meta-label loc-label" id="locLabel">■ LOC</span>
+                                <input id="metaLoc" class="meta-input meta-loc-wide" type="text" readonly
+                                    placeholder="localStorage://scratch/default" style="display: none;" />
+                                <div class="slot-container" id="slotContainer">
+                                    <button class="slot-arrow" id="slotArrowLeft" title="Previous slot">&lt;</button>
+                                    <div class="meta-input slot-box" id="slot1" data-slot="1">—</div>
+                                    <div class="meta-input slot-box" id="slot2" data-slot="2">—</div>
+                                    <div class="meta-input slot-box" id="slot3" data-slot="3">—</div>
+                                    <button class="slot-arrow" id="slotArrowRight" title="Next slot">&gt;</button>
+                                </div>
+                            </div>
+                            <div class="meta-line">
+                                <span class="meta-label save-label" id="saveLabel">■ SAVE</span>
+                                <button id="metaFunc" class="meta-input meta-short" type="button">local</button>
+                                <div id="metaFileDisplay" class="meta-file-display" title="Save As">—</div>
+                                <input id="metaFile" class="meta-input meta-long" type="text" placeholder="default" style="display:none;" />
+                                <input id="metaExt" class="meta-input meta-ext" type="text" placeholder="" style="display:none;" />
+                                <button id="btnLineInfo" class="header-btn" title="Line/Cursor/Block info">L[1/1/0]</button>
+                            </div>                            
+                        </div>
+                    </div>
+                    <button id="btnHeaderSettings" class="header-settings-btn" title="Settings"><span class="icon-gear"><b></b></span></button>
+                </div>
+            </header>
+
+            <!-- Type -->
+            <main class="editor-section">
+                <div id="cliBadge" style="display:none;position:absolute;top:6px;left:8px;z-index:50;padding:2px 10px 2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;letter-spacing:0.04em;color:#1c1812;background:linear-gradient(135deg,#e8b15a,#d09028);pointer-events:none;opacity:0.92;">usekit&gt;</div>
+                <div id="editor-host"></div>
+            </main>
+           
+            <div class="action-nav-wrapper">
+                <div class="action-nav-swipe-container" id="actionNavSwipe">
+                    <div class="swipe-panel panel-buttons">
+                        <div class="header-block block-actions-main">
+                            <button id="btnNew" class="btn">new</button>
+                            <button id="btnLoad" class="btn">load</button>
+                            <button id="btnSave" class="btn">save as</button>
+                            <button id="btnClose" class="btn">close</button>
+                        </div>
+                        <div class="header-block block-actions-edit">
+                            <button id="btnUndo" class="btn" style="display:none;">undo</button>
+                            <button id="btnRedo" class="btn" style="display:none;">redo</button>
+                            <button id="btnCopy" class="btn" style="display:none;">copy</button>
+                            <button id="btnPaste" class="btn" style="display:none;">paste</button>
+                            <button id="btnMenuTool" class="btn">menu</button>
+                            <button id="btnCopyTool" class="btn">clip</button>
+                            <button id="btnRunTool" class="btn">run</button>
+                            <button id="btnSqlView" class="btn">sql</button>
+                        </div>
+                    </div>
+                    <div class="swipe-panel panel-quick active">
+                        <!-- 1행: 앞 4개 고정 일반키 + 뒤 4개 셋트 -->
+                        <div class="header-block block-actions-main">
+                            <button class="btn" id="qnESC">ESC</button>
+                            <button class="btn" id="qnCTRL">CTRL</button>
+                            <button class="btn" id="qnALT">ALT</button>
+                            <button class="btn" id="qnTAB">TAB</button>
+                            <!-- 뒤 4개: 셋트별 전환 -->
+                            <button class="btn qn-set-btn" id="qnS1">NEW</button>
+                            <button class="btn qn-set-btn" id="qnS2">LOAD</button>
+                            <button class="btn qn-set-btn" id="qnS3">SAVE AS</button>
+                            <button class="btn qn-set-btn" id="qnS4">CLOSE</button>
+                        </div>
+                        <!-- 2행 고정 -->
+                        <div class="header-block block-actions-edit">
+                            <button class="btn" id="qnSHIFT_L">⬆</button>
+                            <button class="btn" id="qnHOME">HOME</button>
+                            <button class="btn" id="qnLEFT">◀</button>
+                            <button class="btn" id="qnUP">▲</button>
+                            <button class="btn" id="qnDOWN">▼</button>
+                            <button class="btn" id="qnRIGHT">▶</button>
+                            <button class="btn" id="qnEND">END</button>
+                            <button class="btn" id="qnSHIFT_R">■</button>
+                        </div>
+                    </div>
+                    <div class="swipe-panel panel-navigation layout-b">
+                        <!-- 편집 nav-block 3줄 제거됨 (J03) -->
+                        <!-- 임시 키패드 블록 (LK+KU 길게 시 표시) -->
+                        <!-- kpRow0: 특수문자 행 -->
+                        <div class="nav-block kp-block is-hidden" id="kpRow0">
+                            <button class="cbtn" id="kpEsc">Esc</button>
+                            <button class="cbtn" id="kpBtn0a">_/[</button>
+                            <button class="cbtn" id="kpBtn0b">~/]</button>
+                            <button class="cbtn" id="kpBtn1">'/&#123;</button>
+                            <button class="cbtn" id="kpBtn2">"/&#125;</button>
+                            <button class="cbtn" id="kpBtn0c">:/&lt;</button>
+                            <button class="cbtn" id="kpBtn0d">;/&gt;</button>
+                            <button class="cbtn" id="kpBtn8">=/+</button>
+                            <button class="cbtn" id="kpBtn9">_/-</button>
+                            <button class="cbtn" id="kpBtn10">,/×</button>
+                            <button class="cbtn" id="kpBtn11">./÷</button>
+                            <button class="nav-more-inner" id="kpRow0More" title="Toggle"><span class="icon-gear"><b></b></span></button>
+                        </div>
+                        <!-- kpRow1: 숫자 행 -->
+                        <div class="nav-block kp-block is-hidden" id="kpRow1">
+                            <button class="cbtn" data-k="1" data-s="!">1/!</button>
+                            <button class="cbtn" data-k="2" data-s="@">2/@</button>
+                            <button class="cbtn" data-k="3" data-s="#">3/#</button>
+                            <button class="cbtn" data-k="4" data-s="$">4/$</button>
+                            <button class="cbtn" data-k="5" data-s="%">5/%</button>
+                            <button class="cbtn" data-k="6" data-s="^">6/^</button>
+                            <button class="cbtn" data-k="7" data-s="&amp;">7/&amp;</button>
+                            <button class="cbtn" data-k="8" data-s="*">8/*</button>
+                            <button class="cbtn" data-k="9" data-s="(">9/(</button>
+                            <button class="cbtn" data-k="0" data-s=")">0/)</button>
+                            <button class="cbtn" id="kbSlash">/</button>
+                            <button class="nav-more-inner" id="kpRow1More" title="Toggle"><span class="icon-gear"><b></b></span></button>
+                        </div>
+                        <!-- kpRow2: qwerty 행 -->
+                        <div class="nav-block kp-block is-hidden" id="kpRow2">
+                            <button class="cbtn" id="kbTab">Tab</button>
+                            <button class="cbtn" data-k="q" data-s="Q" data-sp="°" data-sp2="≠" data-sp3="=>">q</button>
+                            <button class="cbtn" data-k="w" data-s="W" data-sp="•" data-sp2="≤" data-sp3="->">w</button>
+                            <button class="cbtn" data-k="e" data-s="E" data-sp="∘" data-sp2="≥" data-sp3="!=">e</button>
+                            <button class="cbtn" data-k="r" data-s="R" data-sp="▪" data-sp2="±" data-sp3="==">r</button>
+                            <button class="cbtn" data-k="t" data-s="T" data-sp="○" data-sp2="√" data-sp3="<=">t</button>
+                            <button class="cbtn" data-k="y" data-s="Y" data-sp="●" data-sp2="∞" data-sp3=">=">y</button>
+                            <button class="cbtn" data-k="u" data-s="U" data-sp="□" data-sp2="≈" data-sp3="**">u</button>
+                            <button class="cbtn" data-k="i" data-s="I" data-sp="■" data-sp2="∑" data-sp3="++">i</button>
+                            <button class="cbtn" data-k="o" data-s="O" data-sp="✓" data-sp2="∏" data-sp3="--">o</button>
+                            <button class="cbtn" data-k="p" data-s="P" data-sp="✗" data-sp2="∫" data-sp3="::">p</button>
+                            <button class="nav-more-inner" id="kpRow2More" title="Toggle"><span class="icon-gear"><b></b></span></button>
+                        </div>
+                        <!-- kpRow3: asdf 행 -->
+                        <div class="nav-block kp-block is-hidden" id="kpRow3">
+                            <button class="cbtn" id="kbCap">Cap</button>
+                            <button class="cbtn" data-k="a" data-s="A" data-sp="↔" data-sp2="∂" data-sp3="&&">a</button>
+                            <button class="cbtn" data-k="s" data-s="S" data-sp="◁" data-sp2="∆" data-sp3="||">s</button>
+                            <button class="cbtn" data-k="d" data-s="D" data-sp="▷" data-sp2="∇" data-sp3="??">d</button>
+                            <button class="cbtn" data-k="f" data-s="F" data-sp="△" data-sp2="∈" data-sp3="..">f</button>
+                            <button class="cbtn" data-k="g" data-s="G" data-sp="▽" data-sp2="∉" data-sp3="
+">g</button>
+                            <button class="cbtn" data-k="h" data-s="H" data-sp="◀" data-sp2="∪" data-sp3="	">h</button>
+                            <button class="cbtn" data-k="j" data-s="J" data-sp="▶" data-sp2="∩" data-sp3="()">j</button>
+                            <button class="cbtn" data-k="k" data-s="K" data-sp="▲" data-sp2="⊂" data-sp3="[]">k</button>
+                            <button class="cbtn" data-k="l" data-s="L" data-sp="▼" data-sp2="⊃" data-sp3="{}">l</button>
+                            <button class="cbtn" id="kbBs2">⌫</button>
+                            <button class="nav-more-inner" id="kpRow3More" title="Toggle"><span class="icon-gear"><b></b></span></button>
+                        </div>
+                        <!-- kpRow4: zxcv 행 -->
+                        <div class="nav-block kp-block is-hidden" id="kpRow4">
+                            <button class="cbtn" id="kbHm">Hm</button>
+                            <button class="cbtn" id="kbEnd">End</button>
+                            <button class="cbtn" data-k="z" data-s="Z" data-sp="←" data-sp2="∀" data-sp3="<>">z</button>
+                            <button class="cbtn" data-k="x" data-s="X" data-sp="→" data-sp2="∃" data-sp3="/*">x</button>
+                            <button class="cbtn" data-k="c" data-s="C" data-sp="↑" data-sp2="ℝ" data-sp3="*/">c</button>
+                            <button class="cbtn" data-k="v" data-s="V" data-sp="↓" data-sp2="ℕ" data-sp3="//">v</button>
+                            <button class="cbtn" data-k="b" data-s="B" data-sp="◇" data-sp2="ℤ" data-sp3="##">b</button>
+                            <button class="cbtn" data-k="n" data-s="N" data-sp="◆" data-sp2="π" data-sp3="@@">n</button>
+                            <button class="cbtn" data-k="m" data-s="M" data-sp="…" data-sp2="μ" data-sp3="__">m</button>
+                            <button class="cbtn" id="kbDel">Del</button>
+                            <button class="cbtn" id="kbEnter2">⏎</button>
+                            <button class="nav-more-inner" id="kpRow4More" title="Toggle"><span class="icon-gear"><b></b></span></button>
+                        </div>
+                        <!-- kpRow5: 하단 제어 행 -->
+                        <div class="nav-block kp-block is-hidden" id="kpRow5">
+                            <button class="cbtn" id="kpShift" title="Shift">⬆</button>
+                            <button class="cbtn" id="kpCtl">Ctl</button>
+                            <button class="cbtn" id="kpAlt">Alt</button>
+                            <button class="cbtn kp-left">◀</button>
+                            <button class="cbtn kp-up">▲</button>
+                            <button class="cbtn kp-space-wide" id="kbSpace">Space</button>
+                            <button class="cbtn kp-down">▼</button>
+                            <button class="cbtn kp-right">▶</button>
+                            <button class="cbtn" id="kpShift2" title="Shift">⬆</button>
+                            <button class="nav-more-inner" id="kpRow5More" title="Toggle"><span class="icon-gear icon-gear-sq"><b></b></span></button>
+                        </div>
+
+                    </div>
+                    <div class="swipe-indicator" id="swipeIndicator">
+                        <span class="indicator-dot" data-panel="buttons"></span>
+                        <span class="indicator-dot active" data-panel="quick"></span>
+                        <span class="indicator-dot" data-panel="navigation"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settingsPanel" class="settings-panel" aria-hidden="true">
+                <div class="settings-overlay" id="settingsOverlay"></div>
+                <div class="settings-drawer">
+                    <div class="settings-header">
+                        <span class="settings-title">Settings</span>
+                        <button class="settings-help" id="btnSettingsHelp" title="Help">Help</button>
+                        <button class="settings-close" id="btnSettingsClose">✕</button>
+                    </div>
+                    <!-- Global 설정 섹션 -->
+                    <div class="settings-section settings-section-global">
+                        <div class="settings-global-row">
+                            <label class="settings-global-label" for="chkGlobalAll">
+                                <span class="settings-section-label">Global</span>
+                                <span class="settings-global-desc">Shared slot environment</span>
+                            </label>
+                            <label class="settings-toggle" id="toggleGlobalAll">
+                                <input type="checkbox" id="chkGlobalAll" checked>
+                                <span class="settings-toggle-track">
+                                    <span class="settings-toggle-thumb"></span>
+                                </span>
+                                <span class="settings-toggle-text" id="globalAllText">ALL</span>
+                            </label>
+                        </div>
+                        <!-- 개별 체크 (Global OFF 시 표시) -->
+                        <div class="settings-individual" id="settingsIndividual">
+                            <label class="settings-check-row">
+                                <input type="checkbox" id="chkGlobalTheme" checked>
+                                <span>Theme</span>
+                            </label>
+                            <label class="settings-check-row">
+                                <input type="checkbox" id="chkGlobalFont" checked>
+                                <span>Font</span>
+                            </label>
+                            <label class="settings-check-row">
+                                <input type="checkbox" id="chkGlobalSize" checked>
+                                <span>Font Size</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label">Theme</div>
+                        <div class="settings-row">
+                            <button class="settings-theme-btn active" id="btnThemeDark" data-theme="dark">
+                                <span class="theme-preview theme-preview-dark"></span>
+                                Dark
+                            </button>
+                            <button class="settings-theme-btn" id="btnThemeLight" data-theme="light">
+                                <span class="theme-preview theme-preview-light"></span>
+                                Light
+                            </button>
+                            <button class="settings-theme-btn" id="btnThemeWhite" data-theme="white">
+                                <span class="theme-preview theme-preview-white"></span>
+                                White
+                            </button>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <div class="settings-section-label">Editor Font</div>
+                        <div class="settings-font-list" id="fontList">
+                            <button class="settings-font-btn active" data-font="default">Default Mono</button>
+                            <button class="settings-font-btn" data-font="jetbrains">JetBrains Mono</button>
+                            <button class="settings-font-btn" data-font="firacode">Fira Code</button>
+                            <button class="settings-font-btn" data-font="sourcecodepro">Source Code Pro</button>
+                            <button class="settings-font-btn" data-font="nanum">Nanum Gothic Coding</button>
+                            <button class="settings-font-btn" data-font="inconsolata">Inconsolata</button>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <div class="settings-section-label">Font Size</div>
+                        <div class="settings-row settings-row-size">
+                            <button class="settings-size-btn" id="btnFontMinus">−</button>
+                            <span class="settings-size-val" id="fontSizeVal">14px</span>
+                            <button class="settings-size-btn" id="btnFontPlus">+</button>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <div class="settings-section-label">Highlight</div>
+                        <div class="settings-row">
+                            <button class="settings-layout-btn active" id="btnHighlightOn" data-highlight="on">On</button>
+                            <button class="settings-layout-btn" id="btnHighlightOff" data-highlight="off">Off</button>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <div class="settings-section-label">Nav Layout</div>
+                        <div class="settings-row">
+                            <button class="settings-layout-btn" id="btnLayoutA" data-layout="A">A</button>
+                            <button class="settings-layout-btn active" id="btnLayoutB" data-layout="B">B</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label">Feedback</div>
+                        <div class="settings-row">
+                            <button class="settings-layout-btn" id="btnFeedbackVibOn"   data-fb="vib-on">Vib</button>
+                            <button class="settings-layout-btn" id="btnFeedbackVibOff"  data-fb="vib-off">NoVib</button>
+                            <button class="settings-layout-btn" id="btnFeedbackSndOn"   data-fb="snd-on">Sound</button>
+                            <button class="settings-layout-btn" id="btnFeedbackSndOff"  data-fb="snd-off">NoSnd</button>
+                        </div>
+                    </div>
+                    <div class="settings-section" style="display:none;">
+                        <div class="settings-section-label">Autosave</div>
+                        <div class="settings-row" style="flex-direction:column; gap:6px; align-items:stretch;">
+                            <div style="display:flex; align-items:center; gap:8px; font-size:0.78rem; opacity:0.6;">
+                                <span style="min-width:3rem;">Slot</span>
+                                <span>Always ON</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="min-width:3rem; font-size:0.78rem; opacity:0.6;">Local</span>
+                                <button class="settings-layout-btn" id="btnAutosaveOn"  data-autosave="on">On</button>
+                                <button class="settings-layout-btn" id="btnAutosaveOff" data-autosave="off">Off</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="settings-section-label">Debug</div>
+                        <div class="settings-row">
+                            <button class="settings-layout-btn" id="btnDebugOn"  data-debug="on">On</button>
+                            <button class="settings-layout-btn" id="btnDebugOff" data-debug="off">Off</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <!-- RUN 출력 팝업 오버레이 -->
+            <!-- RUN 출력 패널 -->
+            <div id="runPanel">
+                <div id="runPanelInner">
+                    <div class="rp-header">
+                        <span class="rp-title">
+                            <span style="font-size:9px;">▶</span> OUTPUT
+                        </span>
+                        <div class="rp-actions">
+                            <button id="btnRunEdit">edit</button>
+                            <button id="btnRunCopy">copy</button>
+                            <button id="btnRunClear">clear</button>
+                            <button id="btnRunClose" class="rp-close">✕ close</button>
+                        </div>
+                    </div>
+                    <div id="runOutput" class="rp-body"></div>
+                </div>
+            </div>
+
+            <footer class="footer-section">
+                <div class="statusbar">
+                    <div class="footer-utils">
+                        <button id="btnFooterMenu" class="footer-btn" tabindex="-1" title="Menu">☰</button>
+                        <button id="btnFooterLeft" class="footer-btn" tabindex="-1" title="Left">←</button>
+                        <button id="btnFooterRight" class="footer-btn" tabindex="-1" title="Right">→</button>
+                        <button id="btnFooterUndo" class="footer-btn" tabindex="-1" title="Undo">↶</button>
+                        <button id="btnFooterRedo" class="footer-btn" tabindex="-1" title="Redo">↷</button>
+                        <button id="btnFooterFind" class="footer-btn" tabindex="-1" title="Find">⌕</button>
+                        <button id="btnFooterPaste" class="footer-btn" tabindex="-1" title="Paste" style="display:none;">⎘</button>
+                        <button id="btnFooterSave" class="footer-btn footer-btn-save" tabindex="-1" title="Save">
+                          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="margin-top:2px">
+                            <!-- 외곽 본체 -->
+                            <rect x="0.6" y="0.6" width="11.8" height="11.8" rx="1.5" fill="currentColor" opacity="0.55" stroke="currentColor" stroke-width="1.1" stroke-opacity="0.7"/>
+                            <!-- 상단 라벨: 거의 흰색 -->
+                            <rect x="2.5" y="1.5" width="5.5" height="3.5" rx="0.3" fill="var(--floppy-fill, #c8d0dc)" opacity="0.85"/>
+                            <!-- 노치 -->
+                            <rect x="7" y="1.8" width="0.9" height="2.8" rx="0.2" fill="currentColor" opacity="0.4"/>
+                            <!-- 하단 디스크 창: 거의 흰색 -->
+                            <rect x="2.5" y="7" width="8" height="4.8" rx="0.6" fill="var(--floppy-fill, #c8d0dc)" opacity="0.8" stroke="currentColor" stroke-width="0.5" stroke-opacity="0.3"/>
+                            <!-- 디스크 원 -->
+                            <circle cx="6.5" cy="9.3" r="1.2" fill="var(--floppy-dot, #5a6a82)" opacity="0.9"/>
+                          </svg>
+                        </button>
+                        <button id="btnFooterWrap" class="footer-btn" tabindex="-1" title="Word Wrap">⌘</button>
+                        <button id="btnFooterFull" class="footer-btn" tabindex="-1" title="Fullscreen" style="display:none;">FL</button>
+                        <button id="btnFooterFocus" class="footer-btn" tabindex="-1" title="Fixed Focus">❖</button>
+                        <button id="btnFooterLock" class="footer-btn" tabindex="-1" title="Focus Lock">⌨</button>
+                        <button id="btnFooterFav" class="footer-btn" tabindex="-1" title="Favorite slot">☆</button>
+                       <!-- 버튼안정화로 임시 none -->
+                        <button id="btnFooterKeyboard" class="footer-btn" tabindex="-1" title="Keyboard Up/Down" style="display:none;">⊠</button>
+                    </div>
+                    <!-- overlay: Lock 버튼 오른쪽에 absolute 고정 -->
+                    <div id="footerMarkOverlay" class="footer-mark-overlay" style="display:none;">
+                        <button id="btnFooterMark" class="footer-mark-btn" tabindex="-1" title="Bookmark" style="display:none;">Mark</button>
+                        <button id="btnFooterClose" class="footer-mark-btn footer-mark-green" tabindex="-1" title="Close" style="display:none;">Close</button>
+                        <button id="btnFooterFindList" class="footer-mark-btn footer-mark-purple" tabindex="-1" title="Find History" style="display:none;">List</button>
+                    </div>
+                    <button id="btnStat" class="stat-btn" title="Stats">0ch 1ln</button>
+                    <button id="btnFooterSettings" class="header-settings-btn" tabindex="-1" title="FooterSettings"><span class="icon-gear"><b></b></span></button>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <div id="helpModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-title-row">
+                        <div class="modal-title">HELP</div>
+                    </div>
+                </div>
+                <button id="btnHelpModalClose" class="modal-close" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body" style="padding:0.8rem 1rem; line-height:1.7; max-height:70vh; overflow-y:auto;">
+
+                <!-- Quick Nav -->
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.3rem;">Quick Nav (TAB Combos)</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-bottom:0.8rem;">
+                    <tr><td style="width:8rem; opacity:0.5;">TAB</td><td>Insert Tab</td></tr>
+                    <tr><td style="opacity:0.5;">CTRL + TAB</td><td>Clipboard</td></tr>
+                    <tr><td style="opacity:0.5;">ALT + TAB</td><td>Menu</td></tr>
+                    <tr><td style="opacity:0.5;">⬆ + TAB</td><td>Multi Mode</td></tr>
+                    <tr><td style="opacity:0.5;">⬆ + CTRL + TAB</td><td>Run</td></tr>
+                    <tr><td style="opacity:0.5;">⬆ + ALT + TAB</td><td>SQL</td></tr>
+                </table>
+
+                <!-- Quick Nav — Modifier Sets -->
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.3rem;">Modifier Sets (S1–S4)</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-bottom:0.8rem;">
+                    <tr><td style="width:8rem; opacity:0.5;">Default</td><td>NEW / LOAD / SAVE AS / CLOSE</td></tr>
+                    <tr><td style="opacity:0.5;">⬆ + Default</td><td>PREV / NEXT / T-SLOT / E-SLOT</td></tr>
+                    <tr><td style="opacity:0.5;">CTRL</td><td>ALL / COPY / PASTE / LIST</td></tr>
+                    <tr><td style="opacity:0.5;">ALT</td><td>FIRST / LAST / BACK / NEXT</td></tr>
+                    <tr><td style="opacity:0.5;">■ (Shift R)</td><td>⌫ / SPACE / ENTER / DEL</td></tr>
+                </table>
+
+                <!-- Multi Mode -->
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.3rem;">Multi Mode</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-bottom:0.8rem;">
+                    <tr><td style="width:8rem; opacity:0.5;">CTRL</td><td>M-LOCK (anchor+head)</td></tr>
+                    <tr><td style="opacity:0.5;">ALT</td><td>CHECK (single cursor)</td></tr>
+                    <tr><td style="opacity:0.5;">TAB</td><td>BLK ↔ CUR swap</td></tr>
+                    <tr><td style="opacity:0.5;">ESC</td><td>Step-back reset</td></tr>
+                </table>
+
+                <!-- UI -->
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.3rem;">UI</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.82rem; margin-bottom:0.8rem;">
+                    <tr><td style="width:8rem; opacity:0.5;">USEKIT brand</td><td>Menu Tool</td></tr>
+                    <tr><td style="opacity:0.5;">⚙ (top-right)</td><td>Quick Tool toggle</td></tr>
+                    <tr><td style="opacity:0.5;">⚙ (bottom-right)</td><td>Hide / Show tools</td></tr>
+                    <tr><td style="opacity:0.5;">☰ (footer)</td><td>Settings</td></tr>
+                </table>
+
+                <hr style="border:none; border-top:1px solid var(--bd); margin:0.6rem 0;">
+
+                <div style="display:flex; gap:1.2rem;">
+                    <!-- F Keys -->
+                    <div style="flex:1;">
+                        <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.3rem;">F Keys</div>
+                        <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                            <tr><td style="width:2.8rem; opacity:0.5;">F1</td><td>Help</td></tr>
+                            <tr><td style="opacity:0.5;">F2</td><td>Find Prev</td></tr>
+                            <tr><td style="opacity:0.5;">F3</td><td>Find Next</td></tr>
+                            <tr><td style="opacity:0.5;">F4</td><td>Close</td></tr>
+                            <tr><td style="opacity:0.5;">F5</td><td>Save</td></tr>
+                            <tr><td style="opacity:0.5;">F6</td><td>New</td></tr>
+                            <tr><td style="opacity:0.5;">F7</td><td>Save As</td></tr>
+                            <tr><td style="opacity:0.5;">F8</td><td>Load</td></tr>
+                            <tr><td style="opacity:0.5;">F9</td><td>Go to Line</td></tr>
+                            <tr><td style="opacity:0.5;">F10</td><td>Clipboard</td></tr>
+                        </table>
+                    </div>
+                    <!-- Ctrl -->
+                    <div style="flex:1;">
+                        <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.3rem;">Ctrl (OS Keyboard)</div>
+                        <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+                            <tr><td style="width:2.4rem; opacity:0.5;">A</td><td>Select All</td></tr>
+                            <tr><td style="opacity:0.5;">C</td><td>Copy</td></tr>
+                            <tr><td style="opacity:0.5;">X</td><td>Cut</td></tr>
+                            <tr><td style="opacity:0.5;">V</td><td>Paste</td></tr>
+                            <tr><td style="opacity:0.5;">Z</td><td>Undo</td></tr>
+                            <tr><td style="opacity:0.5;">Y</td><td>Redo</td></tr>
+                            <tr><td style="opacity:0.5;">S</td><td>Save</td></tr>
+                            <tr><td style="opacity:0.5;">F</td><td>Find</td></tr>
+                            <tr><td style="opacity:0.5;">G</td><td>Go to Line</td></tr>
+                            <tr><td style="opacity:0.5;">D</td><td>Dup Line</td></tr>
+                            <tr><td style="opacity:0.5;">N</td><td>New</td></tr>
+                            <tr><td style="opacity:0.5;">W</td><td>Close Tab</td></tr>
+                            <tr><td style="opacity:0.5;">L</td><td>Select Line</td></tr>
+                            <tr><td style="opacity:0.5;">/</td><td>Comment</td></tr>
+                            <tr><td style="opacity:0.5;">←→</td><td>Word Move</td></tr>
+                            <tr><td style="opacity:0.5;">↑↓</td><td>Doc Start/End</td></tr>
+                            <tr><td style="opacity:0.5;">BS</td><td>Del Word ←</td></tr>
+                            <tr><td style="opacity:0.5;">Del</td><td>Del Word →</td></tr>
+                            <tr><td style="opacity:0.5;">Enter</td><td>New Line Below</td></tr>
+                            <tr><td style="opacity:0.5;">Tab</td><td>Next Slot</td></tr>
+                            <tr><td style="opacity:0.5;">⇧+Tab</td><td>Prev Slot</td></tr>
+                            <tr><td style="opacity:0.5;">Alt+Tab</td><td>First Slot</td></tr>
+                            <tr><td style="opacity:0.5;">⇧+←→</td><td>Select Word</td></tr>
+                            <tr><td style="opacity:0.5;">⇧+↑↓</td><td>Select Doc</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnHelpModalOk" class="modal-btn modal-btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sqlHelpModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal modal-confirm" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-title">SQL Autocomplete</div>
+                </div>
+                <button id="btnSqlHelpClose" class="modal-close" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body" style="padding:0.8rem 1rem; line-height:1.7;">
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.4rem;">Trigger Shortcuts</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                    <tr><td style="width:7.5rem; opacity:0.5; padding:0.15rem 0;">CTRL + SPACE</td><td>Column names</td></tr>
+                    <tr><td style="opacity:0.5; padding:0.15rem 0;">ALT + SPACE</td><td>Table names</td></tr>
+                    <tr><td style="opacity:0.5; padding:0.15rem 0;">⬆ + SPACE</td><td>SQL keywords + History</td></tr>
+                </table>
+                <div style="height:0.6rem;"></div>
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.4rem;">Auto Popup</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                    <tr><td style="width:7.5rem; opacity:0.5; padding:0.15rem 0;">alias.</td><td>Columns for alias table</td></tr>
+                    <tr><td style="opacity:0.5; padding:0.15rem 0;">table.</td><td>Columns for that table</td></tr>
+                </table>
+                <div style="height:0.6rem;"></div>
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.4rem;">Float Shortcuts</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                    <tr><td style="width:7.5rem; opacity:0.5; padding:0.15rem 0;">⇧ ALT + TAB</td><td>Open SQL View</td></tr>
+                    <tr><td style="opacity:0.5; padding:0.15rem 0;">⇧ CTRL + TAB</td><td>Open Run float</td></tr>
+                </table>
+                <div style="height:0.6rem;"></div>
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.4rem;">Tips</div>
+                <div style="font-size:0.83rem; opacity:0.75; line-height:1.6;">
+                    • CTRL+SPACE shows columns from the<br>
+                    &nbsp;&nbsp;last ALT+SPACE selected table first<br>
+                    • Schema auto-reloads after DDL<br>
+                    • Activate with *.sql file extension<br>
+                    &nbsp;&nbsp;or SQL View edit mode
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnSqlHelpOk" class="modal-btn modal-btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pyHelpModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal modal-confirm" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-title">Python Autocomplete</div>
+                </div>
+                <button id="btnPyHelpClose" class="modal-close" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body" style="padding:0.8rem 1rem; line-height:1.7;">
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.4rem;">Trigger Shortcuts</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                    <tr><td style="width:7.5rem; opacity:0.5; padding:0.15rem 0;">CTRL + SPACE</td><td>u.xxx USEKIT shorthand</td></tr>
+                    <tr><td style="opacity:0.5; padding:0.15rem 0;">ALT + SPACE</td><td>use.xxx USEKIT full name</td></tr>
+                    <tr><td style="opacity:0.5; padding:0.15rem 0;">⬆ + SPACE</td><td>History + Keywords + Builtins + Modules</td></tr>
+                </table>
+                <div style="height:0.6rem;"></div>
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.4rem;">Auto Popup</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                    <tr><td style="width:7.5rem; opacity:0.5; padding:0.15rem 0;">u.</td><td>USEKIT shorthand functions</td></tr>
+                    <tr><td style="opacity:0.5; padding:0.15rem 0;">use.</td><td>USEKIT chaining (multi-level)</td></tr>
+                </table>
+                <div style="height:0.6rem;"></div>
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.4rem;">Shift+Space Sections</div>
+                <div style="font-size:0.83rem; opacity:0.75; line-height:1.6;">
+                    HISTORY → KEYWORD → BUILTIN → MODULE → SNIPPET
+                </div>
+                <div style="height:0.6rem;"></div>
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.4rem;">Float Shortcuts</div>
+                <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                    <tr><td style="width:7.5rem; opacity:0.5; padding:0.15rem 0;">⇧ CTRL + TAB</td><td>Open Run float</td></tr>
+                    <tr><td style="opacity:0.5; padding:0.15rem 0;">⇧ ALT + TAB</td><td>Open SQL View</td></tr>
+                </table>
+                <div style="height:0.6rem;"></div>
+                <div style="font-size:0.78rem; opacity:0.5; font-weight:600; margin-bottom:0.4rem;">Tips</div>
+                <div style="font-size:0.83rem; opacity:0.75; line-height:1.6;">
+                    • CTRL inserts <b>u.</b> prefix automatically<br>
+                    • ALT inserts <b>use.</b> prefix automatically<br>
+                    • Modules include runtime-detected packages<br>
+                    • Active with *.py or default extension
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnPyHelpOk" class="modal-btn modal-btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="loadModalTitle">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-title-row">
+                        <div id="loadModalTitle" class="modal-title">LOAD</div>
+                        <div id="loadModalCount" class="modal-count"></div>
+                    </div>
+                    <div id="loadModalPath" class="modal-path"></div>
+                </div>
+                <div class="modal-header-right">
+                    <button id="btnLoadModalCheck" class="modal-check-mode" aria-label="Select mode" title="Select items">☑</button>
+                    <button id="btnLoadModalClose" class="modal-close" aria-label="Close">×</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-tabs">
+                    <button id="loadTabSlot" class="modal-tab active" data-tab="slot">SLOT</button>
+                    <button id="loadTabLocal" class="modal-tab" data-tab="local">LOCAL</button>
+                    <button id="loadTabUm" class="modal-tab" data-tab="um" style="display:none;">UM</button>
+                    <button id="loadTabUsekit" class="modal-tab" data-tab="usekit">USEKIT</button>
+                    <button id="loadTabStorage" class="modal-tab" data-tab="storage">STORAGE</button>
+                </div>
+                <input id="loadModalSearch" class="modal-search" type="text" placeholder="search..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                <div class="load-filter-row">
+                    <label class="load-filter-check" id="loadFilterDirtyLabel"><input type="checkbox" id="loadFilterDirty"> Dirty</label>
+                    <label class="load-filter-check" id="loadFilterFavLabel"><input type="checkbox" id="loadFilterFav"> ★ Favorite</label>
+                    <div class="load-sort-group">
+                        <button class="load-sort-btn active" data-sort="slot">Slot</button>
+                        <button class="load-sort-btn" data-sort="latest">Latest</button>
+                        <button class="load-sort-btn" data-sort="oldest">Oldest</button>
+                        <button class="load-sort-btn" data-sort="az">A-Z</button>
+                        <button class="load-sort-btn" data-sort="za">Z-A</button>
+                    </div>
+                </div>
+                <div id="loadModalList" class="modal-list" role="listbox" aria-label="Saved slots"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnLoadModalDeleteSelected" class="modal-btn modal-btn-danger" style="display:none;">Delete Selected</button>
+                <button id="btnLoadModalCancel" class="modal-btn">Close</button>
+            </div>
+        </div>
+    </div>
+    <div id="saveModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="saveModalTitle">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-title-row">
+                        <div id="saveModalTitle" class="modal-title">SAVE</div>
+                        <div id="saveModalSlot" class="modal-count"></div>
+                    </div>
+                    <div id="saveModalPath" class="modal-path"></div>
+                </div>
+                <button id="btnSaveModalClose" class="modal-close" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-tabs">
+                    <button id="saveTabLocal"  class="modal-tab active" data-tab="local">LOCAL</button>
+                    <button id="saveTabUsekit" class="modal-tab" data-tab="usekit">USEKIT</button>
+                </div>
+                <div class="save-inputs">
+                    <div class="save-input-row" id="saveModalDirRow" style="display:none;">
+                        <label class="save-input-label">Folder</label>
+                        <input id="saveModalDir" class="save-input-field" type="text"
+                               autocomplete="off" autocapitalize="off" spellcheck="false"
+                               placeholder="/_tmp/" />
+                    </div>
+                    <div class="save-input-row">
+                        <label class="save-input-label">Name</label>
+                        <input id="saveModalName" class="save-input-field" type="text"
+                               autocomplete="off" autocapitalize="off" spellcheck="false"
+                               placeholder="filename" />
+                    </div>
+                    <div class="save-input-row">
+                        <label class="save-input-label">Ext</label>
+                        <div class="save-ext-wrap">
+                            <input id="saveModalExt" class="save-input-field save-input-ext" type="text"
+                                   autocomplete="off" autocapitalize="off" spellcheck="false"
+                                   placeholder="txt" maxlength="10" />
+                            <button id="saveExtDropBtn" class="save-ext-drop-btn" type="button">▾</button>
+                            <div id="saveExtDropList" class="save-ext-drop-list" style="display:none;">
+                                <div class="save-ext-drop-item" data-ext="__none__">(none)</div>
+                                <div class="save-ext-drop-item" data-ext="txt">txt</div>
+                                <div class="save-ext-drop-item" data-ext="py">py</div>
+                                <div class="save-ext-drop-item" data-ext="js">js</div>
+                                <div class="save-ext-drop-item" data-ext="sql">sql</div>
+                                <div class="save-ext-drop-item" data-ext="html">html</div>
+                                <div class="save-ext-drop-item" data-ext="css">css</div>
+                                <div class="save-ext-drop-item" data-ext="json">json</div>
+                                <div class="save-ext-drop-item" data-ext="md">md</div>
+                                <div class="save-ext-drop-item" data-ext="sh">sh</div>
+                                <div class="save-ext-drop-item" data-ext="csv">csv</div>
+                                <div class="save-ext-drop-item" data-ext="log">log</div>
+                                <div class="save-ext-drop-item" data-ext="yaml">yaml</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="saveListNav" class="save-list-nav" style="display:none;">
+                    <button id="btnSaveListUp" class="save-list-nav-btn" type="button">▲</button>
+                    <span id="saveListNavInfo" class="save-list-nav-info"></span>
+                    <button id="btnSaveListDown" class="save-list-nav-btn" type="button">▼</button>
+                </div>
+                <div id="saveModalList" class="modal-list" role="listbox"></div>
+            </div>
+            <div class="modal-footer modal-footer-split">
+                <button id="btnSaveModalOk"     class="modal-btn save-btn-ok">SAVE</button>
+                <button id="btnSaveModalCancel" class="modal-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <div id="diffModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal" role="dialog" aria-modal="true" style="max-height:85vh;display:flex;flex-direction:column;">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-title" id="diffModalTitle">Load Local Version?</div>
+                    <div id="diffModalMeta" class="modal-path" style="font-size:0.75rem;"></div>
+                </div>
+                <button id="btnDiffModalClose" class="modal-close" aria-label="Close">×</button>
+            </div>
+            <div style="display:flex;flex:1;overflow:hidden;gap:4px;padding:6px;min-height:0;">
+                <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+                    <div id="diffModalLabelSlot" style="font-size:0.7rem;font-weight:600;color:#856404;background:#fff3cd;padding:3px 6px;border-radius:4px 4px 0 0;">SLOT (current)</div>
+                    <pre id="diffModalSlot" style="flex:1;overflow:auto;margin:0;padding:6px;background:#fafafa;border:1px solid #ddd;border-top:none;font-size:0.78rem;white-space:pre-wrap;word-break:break-all;"></pre>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+                    <div id="diffModalLabelLocal" style="font-size:0.7rem;font-weight:600;color:#155724;background:#d4edda;padding:3px 6px;border-radius:4px 4px 0 0;">LOCAL (saved)</div>
+                    <pre id="diffModalLocal" style="flex:1;overflow:auto;margin:0;padding:6px;background:#fafafa;border:1px solid #ddd;border-top:none;font-size:0.78rem;white-space:pre-wrap;word-break:break-all;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-split">
+                <button id="btnDiffModalSlot" class="modal-btn">Load Slot</button>
+                <button id="btnDiffModalOk" class="modal-btn modal-btn-primary">Load Local</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirmModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal modal-confirm" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div id="confirmModalTitle" class="modal-title">Confirm</div>
+                    <div id="confirmModalMessage" class="modal-confirm-message"></div>
+                </div>
+                <button id="btnConfirmModalClose" class="modal-close" aria-label="Close">×</button>
+            </div>
+            <div class="modal-footer modal-footer-split">
+                <button id="btnConfirmModalCancel" class="modal-btn">Cancel</button>
+                <button id="btnConfirmModalOk" class="modal-btn modal-btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+    <div id="jumpLineModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal modal-confirm modal-jump" role="dialog" aria-modal="true">
+            <div class="modal-header modal-header-jump">
+                <div class="modal-header-left">
+                    <div class="modal-title-row modal-jump-title-row" id="jumpLineDragHandle">
+                        <div class="modal-title">Jump to Line</div>
+                        <div id="jumpLineMeta" class="modal-count modal-jump-meta">Ln 1 / 1</div>
+                    </div>
+                    <input id="jumpLineInput" type="number" min="1"
+                        class="modal-text-input"
+                        placeholder="Line number" inputmode="numeric" />
+                </div>
+                <button id="btnJumpLineClose" class="modal-close" aria-label="Close">×</button>
+            </div>
+            <div class="modal-footer modal-jump-footer">
+                <button id="btnJumpLineClear" class="modal-btn">Clear</button>
+                <button id="btnJumpLineCancel" class="modal-btn">Cancel</button>
+                <button id="btnJumpLineOk" class="modal-btn modal-btn-primary">Jump</button>
+            </div>
+        </div>
+    </div>
+    <div id="clipModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal modal-confirm" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="clip-tabs">
+                        <button id="btnClipTab" class="clip-tab active">Clipboard</button>
+                        <button id="btnBookmarkTab" class="clip-tab">Bookmark</button>
+                        <button id="btnFindHistTab" class="clip-tab">Find</button>
+                    </div>
+                </div>
+                <button id="btnClipModalClose" class="modal-close" aria-label="Close">×</button>
+            </div>
+            <div id="clipModalList" class="modal-list" role="listbox" aria-label="Clipboard history"></div>
+            <div id="bookmarkFilter" class="clip-tabs" style="display:none;padding:4px 8px 0;">
+                <button id="btnBmFilterCurrent" class="clip-tab active">Current</button>
+                <button id="btnBmFilterAll" class="clip-tab">All</button>
+            </div>
+            <div id="bookmarkModalList" class="modal-list" style="display:none;" role="listbox" aria-label="Bookmark history"></div>
+            <div id="findHistModalList" class="modal-list" style="display:none;" role="listbox" aria-label="Find history"></div>
+            <div class="modal-footer modal-footer-split">
+                <button id="btnClipModalClear" class="modal-btn">Clear all</button>
+                <button id="btnClipModalCancel" class="modal-btn" onclick="NavClipboard.closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+    <div id="findModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal modal-confirm" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-title-row">
+                        <div class="modal-title">Find</div>
+                        <div id="findModalCount" class="modal-count"></div>
+                        <div id="findModalLoc" class="modal-loc"></div>
+                        <div class="modal-title-spacer" aria-hidden="true"></div>
+                        <button id="findModalClear" class="modal-link-btn modal-title-action" type="button" title="Clear inputs">Clear</button>
+                    </div>
+                    <input id="findModalInput" type="text"
+                        class="modal-text-input"
+                        placeholder="Search..." autocomplete="off" autocorrect="off" spellcheck="false" />
+                    <input id="findModalReplaceTo" type="text"
+                        class="modal-text-input modal-text-input-secondary" style="display:none;"
+                        placeholder="Replace with..." autocomplete="off" autocorrect="off" spellcheck="false" />
+                    <div class="modal-options" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;">
+                        <label class="modal-option-label">
+                            <input id="findModalRegex" type="checkbox" />
+                            Regex
+                        </label>
+                        <label class="modal-option-label">
+                            <input id="findModalCase" type="checkbox" />
+                            Aa
+                        </label>
+                        <label class="modal-option-label">
+                            <input id="findModalFromStart" type="checkbox" checked />
+                            From start
+                        </label>
+                        <label class="modal-option-label modal-option-accent">
+                            <input id="findModalReplaceMode" type="checkbox" />
+                            Replace
+                        </label>
+                        <label class="modal-option-label modal-option-accent">
+                            <input id="findModalHistoryMode" type="checkbox" />
+                            History
+                        </label>
+                        <label class="modal-option-label modal-option-accent" id="findModalGoLabel">
+                            <input id="findModalGotoMode" type="checkbox" />
+                            Go
+                        </label>
+                        <label class="modal-option-label modal-option-accent" id="findModalRepHistoryLabel" style="display:none;">
+                            <input id="findModalRepHistoryMode" type="checkbox" />
+                            Rep History
+                        </label>
+                        <label class="modal-option-label modal-option-accent" id="findModalGotoHistoryLabel" style="display:none;">
+                            <input id="findModalGotoHistoryMode" type="checkbox" />
+                            Go History
+                        </label>
+                    </div>
+                    <div id="findModalHistoryList" class="modal-list" style="display:none;"></div>
+                    <div id="findModalRepHistoryList" class="modal-list" style="display:none;"></div>
+                    <div id="findModalGotoArea" style="display:none;">
+                        <input id="findModalGotoInput" type="number" min="1"
+                            class="modal-text-input modal-text-input-secondary"
+                            placeholder="Line number..." autocomplete="off" />
+                        <div id="findModalGotoPreview" style="display:none;margin-top:4px;padding:6px 8px;border-radius:6px;background:var(--bg-inset,var(--bg-surface));border:1px solid var(--bd);font-size:0.85em;color:var(--text-muted);font-family:monospace;white-space:pre;overflow:hidden;text-overflow:ellipsis;"></div>
+                        <div id="findModalGotoHistory" class="modal-list" style="display:none;margin-top:4px;"></div>
+                    </div>
+                </div>
+                <button id="findModalClose" class="modal-close" aria-label="Close">×</button>
+            </div>
+            <div class="modal-footer modal-footer-split">
+                <span id="findModalBtnsFind" style="display:contents;">
+                    <button id="findModalPrev" class="modal-btn">◀ Prev</button>
+                    <button id="findModalSearch" class="modal-btn">Search</button>
+                    <button id="findModalNext" class="modal-btn modal-btn-primary">Next ▶</button>
+                </span>
+                <span id="findModalBtnsReplace" style="display:none;">
+                    <button id="findModalRepPrev" class="modal-btn modal-btn-sm">◀</button>
+                    <button id="findModalRepNext" class="modal-btn modal-btn-sm">▶</button>
+                    <button id="findModalReplaceOne" class="modal-btn modal-btn-sm">Replace</button>
+                    <button id="findModalReplaceAll" class="modal-btn modal-btn-sm modal-btn-primary">All</button>
+                    <button id="findModalRepUndo" class="modal-btn modal-btn-sm">Undo</button>
+                </span>
+                <span id="findModalBtnsGoto" style="display:none;">
+                    <button id="findModalGotoGo" class="modal-btn modal-btn-primary" style="flex:1;">Go to Line</button>
+                </span>
+            </div>
+        </div>
+    </div>
+    <script src="js2/editor/editor.js?v=0.2.0"></script>
+    <script src="js2/editor/sql_complete.js?v=0.2.0"></script>
+    <script src="js2/editor/py_complete.js?v=0.2.0"></script>
+    <script src="js2/state/state.js?v=0.2.0"></script>
+    <script src="js2/state/block_state.js?v=0.2.0"></script>
+    <script src="js2/state/setup_policy.js?v=0.2.0"></script>
+    <script src="js2/state/active_state.js?v=0.2.0"></script>
+    <script src="js2/state/state_slot.js?v=0.2.0"></script>
+    <script src="js2/slot/slot_storage.js?v=0.2.0"></script>
+    <script src="js2/slot/slot_usekit.js?v=0.2.0"></script>
+    <script src="js2/slot/tab_usekit.js?v=0.2.0"></script>
+    <script src="js2/slot/slot_manager.js?v=0.2.0"></script>
+    <script src="js2/slot/slot_popup.js?v=0.2.0"></script>
+    <script src="js2/slot/save_popup.js?v=0.2.0"></script>
+    <script src="js2/popup/popup_manager.js?v=0.2.0"></script>
+    <script src="js2/nav/nav_cursor.js?v=0.2.0"></script>
+    <script src="js2/nav/nav_block.js?v=0.2.0"></script>
+    <script src="js2/nav/nav_block_v2.js?v=0.2.0"></script>
+    <script src="js2/nav/nav_num.js?v=0.2.0"></script>
+    <script src="js2/nav/nav_find.js?v=0.2.0"></script>
+    <script src="js2/nav/nav_clipboard.js?v=0.2.0"></script>
+    <script src="js2/nav/nav.js?v=0.2.0"></script>
+    <script src="js2/ui/ui_stats.js?v=0.2.0"></script>
+    <script src="js2/ui/ui_settings.js?v=0.2.0"></script>
+    <script src="js2/ui/ui_viewport.js?v=0.2.0"></script>
+    <script src="js2/ui/ui_feedback.js?v=0.2.0"></script>
+    <script src="js2/ui/ui_keypad.js?v=0.2.0"></script>
+    <script src="js2/ui/ui_events.js?v=0.2.0"></script>
+    <!-- <script src="js2/ui/ui_debug.js?v=0.2.0"></script> -->
+    <script src="js2/ui/ui.js?v=0.2.0"></script>
+    <script>
+      // ── 전역 clipboard 유틸 (Samsung Browser execCommand 우선) ──
+      window._usekitClipCopy = function(text) {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.setSelectionRange(0, ta.value.length);
+          var ok = document.execCommand('copy');
+          ta.remove();
+          if (ok) return true;
+        } catch (e) {}
+        try { navigator.clipboard.writeText(text); } catch (e) {}
+        return false;
+      };
+    </script>
+    <script>
+      const DEV_MODE = false; // 🔧 개발 중: true | 배포 시: false
+      window._BUILD_VER = '0.2.0'; // theme href 버전쿼리용 (v0.2.0)
+
+      if (!DEV_MODE && 'serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').then(reg => {
+            console.log('[PWA] SW registered:', reg.scope);
+
+            // 새 워커가 waiting 상태가 되면 바로 skipWaiting 요청
+            const trySkip = (worker) => {
+              if (!worker) return;
+              worker.postMessage({ type: 'SKIP_WAITING' });
+            };
+
+            if (reg.waiting) {
+              trySkip(reg.waiting);
+            }
+
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('[PWA] New SW installed → skip waiting');
+                  trySkip(newWorker);
+                }
+              });
+            });
+          }).catch(err => console.error('[PWA] SW registration failed:', err));
+
+          // controllerchange → 1회 reload
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            console.log('[PWA] Controller changed → reload');
+            location.reload();
+          });
+        });
+      }
+
+      // DEV_MODE일 때 기존 SW 자동 제거
+      if (DEV_MODE && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(reg => {
+            reg.unregister();
+            console.log('[DEV] SW unregistered');
+          });
+        });
+        caches.keys().then(keys => {
+          keys.forEach(key => {
+            caches.delete(key);
+            console.log('[DEV] Cache cleared:', key);
+          });
+        });
+      }
+    </script>
+<input id="kpSysInput" type="text" style="display:none;position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+<script>
+// 앱 버튼 전체를 탭 순서에서 제외 — 롱클릭 후 방향키 탭 이동 시 OS 키보드 유발 방지
+document.addEventListener('DOMContentLoaded', () => {
+    const SEL = '.footer-btn,.header-btn,.header-settings-btn,.cbtn,.slot-arrow,.btn,.kp-more,#metaFunc,#btnLineInfo';
+    document.querySelectorAll(SEL).forEach(el => el.setAttribute('tabindex', '-1'));
+});
+</script>
+<!-- ───────────────────────────────────────────────────────
+     FLOAT 3-BUTTON  (Run | Output | Tool)
+     세로 pill 형태, 드래그 가능, 클릭으로 각 동작
+─────────────────────────────────────────────────────── -->
+
+<!-- 플로팅 3버튼 pill -->
+<div id="floatRunTool">
+  <button id="floatBtnRun" class="fb">
+    <span class="fb-icon">▶</span>
+    <span class="fb-label">RUN</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatBtnOutput" class="fb">
+    <span class="fb-icon">▤</span>
+    <span class="fb-label">OUT</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatBtnTool" class="fb">
+    <span class="fb-icon">⚙</span>
+    <span class="fb-label">TOOL</span>
+  </button>
+</div>
+
+<!-- Tool 메뉴 패널 -->
+<div id="floatToolPanel">
+  <div class="tp-header"><span>Run Tool</span><button class="float-panel-close" data-panel="floatToolPanel">✕</button></div>
+
+  <!-- ▾ RUN 그룹 (기본 펼침) -->
+  <button id="floatTpRunToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#7BA8D9;">▸</span> <span class="tp-grp-label" style="color:#7BA8D9;">Run</span><span id="floatTpRunArrow" style="margin-left:auto;opacity:0.4;color:#7BA8D9;">▴</span></button>
+  <div id="floatTpRunSection" style="display:block;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
+    <button id="floatTpRun"   class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#3fb950;">▶</span> Live<span id="floatTpLiveDot" style="display:none;color:#3fb950;margin-left:0.4em;font-size:0.6em;">●</span></button>
+    <button id="floatTpPrint" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">🖨</span> Eval</button>
+    <button id="floatTpLine"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">⤳</span> Line</button>
+    <button id="floatTpBlock" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">▣</span> Block</button>
+    <button id="floatTpFileTmp" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">📄</span> File</button>
+    <div class="tp-sep" style="margin:2px 0.8rem;"></div>
+    <button id="floatTpResetRepl" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">⟲</span> Reset</button>
+    <div class="tp-sep" style="margin:2px 0.8rem;"></div>
+    <button id="floatTpCli" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#d09028;">⌘</span> <span id="floatTpCliLabel">CLI</span></button>
+  </div>
+
+  <div class="tp-sep"></div>
+
+  <!-- ▸ EDIT 그룹 (기본 접힘) -->
+  <button id="floatTpEditToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#94A3B8;">▸</span> <span class="tp-grp-label" style="color:#94A3B8;">Edit</span><span id="floatTpEditArrow" style="margin-left:auto;opacity:0.4;color:#94A3B8;">▾</span></button>
+  <div id="floatTpEditSection" style="display:none;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
+    <button id="floatTpCaseTransform"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">Aa</span> Case transform</button>
+    <button id="floatTpTabToSpace"     class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">→␣</span> Tab → Space</button>
+    <button id="floatTpTrimTrailing"   class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">␣✕</span> Trim trailing</button>
+  </div>
+
+  <div class="tp-sep"></div>
+
+  <!-- ▸ MENU 그룹 (기본 접힘) -->
+  <button id="floatTpMenuToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#94A3B8;">▸</span> <span class="tp-grp-label" style="color:#94A3B8;">Menu</span><span id="floatTpMenuArrow" style="margin-left:auto;opacity:0.4;color:#94A3B8;">▾</span></button>
+  <div id="floatTpMenuSection" style="display:none;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
+    <button id="floatTpLayout"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" id="floatTpLayoutIcon">▦</span> <span id="floatTpLayoutLabel">Horizontal</span></button>
+    <button id="floatTpMenuHub" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">≡</span> Menu</button>
+    <button id="floatTpHide"    class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">✕</span> Hide</button>
+  </div>
+
+  <div class="tp-sep"></div>
+
+  <!-- Help 버튼 (클릭 시 패널 닫고 Python Help 모달 오픈) -->
+  <button id="floatTpHelp" class="tp-btn"><span class="tp-icon">?</span> Help</button>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     SQL VIEW — pill + 흰색 그리드 패널 (sql_design_v2 통합)
+     진입: 풋터 btnSqlView → SQL pill 독립 토글
+     Python pill과 독립적으로 표시/숨김
+══════════════════════════════════════════════════════════════ -->
+
+<!-- SQL 플로팅 pill -->
+<div id="floatSqlTool">
+  <button id="floatBtnSql" class="fb">
+    <span class="fb-icon">◆</span>
+    <span class="fb-label">SQL</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatBtnGrid" class="fb">
+    <span class="fb-icon">▦</span>
+    <span class="fb-label">GRID</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatBtnSqlTool" class="fb">
+    <span class="fb-icon">⚙</span>
+    <span class="fb-label">TOOL</span>
+  </button>
+</div>
+
+<!-- SQL Tool 메뉴 팝업 (골든 테마) -->
+<div id="floatSqlToolPanel">
+  <div class="stp-header"><span>SQL Tool</span><button class="float-panel-close" data-panel="floatSqlToolPanel">✕</button></div>
+
+  <!-- ▾ RUN 그룹 (첫 진입 시 펼침) -->
+  <button id="floatStpRunToggle" class="stp-btn stp-grp-toggle"><span class="stp-icon">▸</span> <span>Run</span><span id="floatStpRunArrow" style="margin-left:auto;opacity:0.5;">▴</span></button>
+  <div id="floatStpRunSection" style="display:block;">
+    <button id="floatStpAll"      class="stp-btn" style="padding-left:1.8rem;"><span class="stp-icon">≡</span> All</button>
+    <button id="floatStpBind"     class="stp-btn" style="padding-left:1.8rem;"><span class="stp-icon">$</span> Variables</button>
+    <button id="floatStpExplain"  class="stp-btn" style="padding-left:1.8rem;"><span class="stp-icon">?</span> Explain</button>
+  </div>
+
+  <div class="stp-sep"></div>
+
+  <!-- ▸ META 그룹 (첫 진입 시 접힘) -->
+  <button id="floatStpMetaToggle" class="stp-btn stp-grp-toggle"><span class="stp-icon">▸</span> <span>Meta</span><span id="floatStpMetaArrow" style="margin-left:auto;opacity:0.5;">▾</span></button>
+  <div id="floatStpMetaSection" style="display:none;">
+    <button id="floatStpMetaTables" class="stp-btn" style="padding-left:1.8rem;"><span class="stp-icon">⊞</span> Tables</button>
+    <button id="floatStpAnalyze"    class="stp-btn" style="padding-left:1.8rem;"><span class="stp-icon">~</span> Analyze</button>
+    <button id="floatStpMetaVacuum" class="stp-btn" style="padding-left:1.8rem;"><span class="stp-icon">✦</span> Vacuum</button>
+  </div>
+
+  <div class="stp-sep"></div>
+
+  <!-- ▸ MENU 그룹 (기본 접힘) — pill 간 전환은 Menu pill(허브)로 일원화 -->
+  <button id="floatStpMenuToggle" class="stp-btn stp-grp-toggle"><span class="stp-icon">▸</span> <span>Menu</span><span id="floatStpMenuArrow" style="margin-left:auto;opacity:0.5;">▾</span></button>
+  <div id="floatStpMenuSection" style="display:none;">
+    <button id="floatStpMenuHorizontal" class="stp-btn" style="padding-left:1.8rem;"><span class="stp-icon" id="floatStpLayoutIcon">▦</span> <span id="floatStpLayoutLabel">Horizontal</span></button>
+    <button id="floatStpMenuHub"        class="stp-btn" style="padding-left:1.8rem;"><span class="stp-icon">≡</span> Menu</button>
+    <button id="floatStpMenuHide"       class="stp-btn" style="padding-left:1.8rem;"><span class="stp-icon">✕</span> Hide</button>
+  </div>
+
+  <div class="stp-sep"></div>
+
+  <!-- Help 버튼 (클릭 시 패널 닫고 SQL Help 모달 오픈) -->
+  <button id="floatStpHelp" class="stp-btn"><span class="stp-icon">?</span> Help</button>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     CLIPBOARD pill — 3버튼 (COPY/ALL/TOOL), 민트 테마
+     트리거: 퀵메뉴 CTRL 활성 상태에서 TAB 탭 → 토글
+     버튼 동작: 기존 키패드 버튼에 .click() forward
+══════════════════════════════════════════════════════════════ -->
+<div id="floatClipTool">
+  <button id="floatBtnClipCopy" class="fb">
+    <span class="fb-icon">⎘</span>
+    <span class="fb-label">COPY</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatBtnClipPaste" class="fb">
+    <span class="fb-icon">⊕</span>
+    <span class="fb-label">PASTE</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatBtnClipTool" class="fb">
+    <span class="fb-icon">⚙</span>
+    <span class="fb-label">TOOL</span>
+  </button>
+</div>
+
+<!-- Clipboard TOOL 메뉴 팝업 (민트 테마) -->
+<div id="floatClipToolPanel">
+  <div class="ctp-header"><span>Copy Tool</span><button class="float-panel-close" data-panel="floatClipToolPanel">✕</button></div>
+
+  <!-- ▾ CLIPBOARD 그룹 (기본 펼침) -->
+  <button id="floatCtpClipToggle" class="ctp-btn ctp-grp-toggle"><span class="ctp-icon">▸</span> <span>Clipboard</span><span id="floatCtpClipArrow" style="margin-left:auto;opacity:0.5;">▴</span></button>
+  <div id="floatCtpClipSection" style="display:block;">
+    <button id="floatCtpSelectAll" class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">⊟</span> Select All</button>
+    <button id="floatCtpCut"   class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">✂</span> Cut</button>
+    <button id="floatCtpList"  class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">≡</span> List</button>
+  </div>
+
+  <div class="ctp-sep"></div>
+
+  <!-- ▸ MENU 그룹 (기본 접힘) — pill 간 전환은 Menu pill(허브)로 일원화 -->
+  <button id="floatCtpMenuToggle" class="ctp-btn ctp-grp-toggle"><span class="ctp-icon">▸</span> <span>Menu</span><span id="floatCtpMenuArrow" style="margin-left:auto;opacity:0.5;">▾</span></button>
+  <div id="floatCtpMenuSection" style="display:none;">
+    <button id="floatCtpMenuHorizontal" class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon" id="floatCtpLayoutIcon">▦</span> <span id="floatCtpLayoutLabel">Horizontal</span></button>
+    <button id="floatCtpMenuHub"        class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">≡</span> Menu</button>
+    <button id="floatCtpMenuHide"       class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">✕</span> Hide</button>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     MENU TOOL pill — 플로팅 허브 (퍼플 테마)
+     단일 [MENU] 버튼. 탭 → 허브 메뉴 팝업 (다른 pill 토글 + 자체 설정)
+══════════════════════════════════════════════════════════════ -->
+<div id="floatMenuTool">
+  <button id="floatBtnMenu" class="fb">
+    <span class="fb-icon">≡</span>
+    <span class="fb-label">MENU</span>
+  </button>
+</div>
+
+<!-- Menu hub 팝업 -->
+<div id="floatMenuToolPanel">
+  <div class="mtp-header"><span>Menu</span><button class="float-panel-close" data-panel="floatMenuToolPanel">✕</button></div>
+
+  <!-- ▾ FLOATS 그룹 (기본 펼침) -->
+  <button id="floatMtpFloatsToggle" class="mtp-btn mtp-grp-toggle"><span class="mtp-icon">▸</span> <span>Floats</span><span id="floatMtpFloatsArrow" style="margin-left:auto;opacity:0.5;">▴</span></button>
+  <div id="floatMtpFloatsSection" style="display:block;">
+    <button id="floatMtpRunPill"  class="mtp-btn" style="padding-left:1.8rem;"><span class="mtp-icon">▶</span> Run Pill</button>
+    <button id="floatMtpSqlPill"  class="mtp-btn" style="padding-left:1.8rem;"><span class="mtp-icon">◆</span> SQL Pill</button>
+    <button id="floatMtpCopyPill" class="mtp-btn" style="padding-left:1.8rem;"><span class="mtp-icon">⎘</span> Copy Pill</button>
+  </div>
+
+  <div class="mtp-sep"></div>
+
+  <!-- ▾ ALIGN 그룹 (일괄 정렬/표시) -->
+  <button id="floatMtpAlignToggle" class="mtp-btn mtp-grp-toggle"><span class="mtp-icon">▸</span> <span>Align</span><span id="floatMtpAlignArrow" style="margin-left:auto;opacity:0.5;">▴</span></button>
+  <div id="floatMtpAlignSection" style="display:block;">
+    <button id="floatMtpAlignHorizontal" class="mtp-btn" style="padding-left:1.8rem;"><span class="mtp-icon">▦</span> Horizontal</button>
+    <button id="floatMtpAlignVertical"   class="mtp-btn" style="padding-left:1.8rem;"><span class="mtp-icon">▤</span> Vertical</button>
+    <button id="floatMtpAlignShowAll"    class="mtp-btn" style="padding-left:1.8rem;"><span class="mtp-icon">◉</span> Show All</button>
+    <button id="floatMtpAlignHideAll"    class="mtp-btn" style="padding-left:1.8rem;"><span class="mtp-icon">✕</span> Hide All</button>
+  </div>
+
+  <div class="mtp-sep"></div>
+
+  <!-- ▸ SELF 그룹 (기본 접힘) — MENU pill 자체 설정 -->
+  <button id="floatMtpSelfToggle" class="mtp-btn mtp-grp-toggle"><span class="mtp-icon">▸</span> <span>This</span><span id="floatMtpSelfArrow" style="margin-left:auto;opacity:0.5;">▾</span></button>
+  <div id="floatMtpSelfSection" style="display:none;">
+    <button id="floatMtpHorizontal" class="mtp-btn" style="padding-left:1.8rem;"><span class="mtp-icon">⊟</span> Dock Menu</button>
+    <button id="floatMtpDockOff"    class="mtp-btn" style="padding-left:1.8rem;"><span class="mtp-icon">⊟</span> Dock Block Off</button>
+    <button id="floatMtpKeyboard"   class="mtp-btn" style="padding-left:1.8rem; display:none;"><span class="mtp-icon">⌨</span> Keyboard</button>
+    <button id="floatMtpHide"       class="mtp-btn" style="padding-left:1.8rem;"><span class="mtp-icon">✕</span> Hide</button>
+  </div>
+</div>
+
+<!-- SQL 그리드 패널 (흰색) -->
+<div id="sqlGridOverlay">
+  <div id="sqlGridPanel">
+    <div class="sgp-header">
+      <div class="sgp-title">
+        <span class="dot">▦</span> SQL RESULT
+      </div>
+      <div class="sgp-actions">
+        <button id="sgpBtnEdit" title="Edit mode — tap editor while panel stays">edit</button>
+        <button id="sgpBtnWrap" title="Toggle word wrap">wrap</button>
+        <button id="sgpBtnCopy">copy</button>
+        <button id="sgpBtnCsv">csv</button>
+        <button id="sgpBtnClose" class="sgp-close">✕ close</button>
+      </div>
+    </div>
+
+    <div class="sgp-meta">
+      <div class="query" id="sgpQuery">(no query yet — tap ◆ SQL to execute)</div>
+      <div class="stats" id="sgpStats">—</div>
+    </div>
+
+    <div class="sgp-body" id="sgpBody">
+      <!-- 동적 렌더링: 초기 상태 / 로딩 / 결과 / 에러 / DML메시지 -->
+      <div class="sgp-empty">
+        <div class="sgp-empty-icon">▦</div>
+        <div class="sgp-empty-text">No result yet</div>
+        <div class="sgp-empty-hint">Tap <b>◆ SQL</b> to execute the statement<br>at your cursor position</div>
+      </div>
+    </div>
+
+    <div class="sgp-footer">
+      <div class="sgp-fleft">
+        <span class="sgp-badge" id="sgpVerb">—</span>
+        <span id="sgpDimens">—</span>
+      </div>
+      <span>SQLite · u.xsb</span>
+    </div>
+  </div>
+</div>
+
+<!-- SQL 모드 토글 + 그리드 열기/닫기 -->
+
+
+<!-- ═════════════════════════════════════════════════════════════
+     CLIPBOARD pill 로직
+     - 풋터 CTRL+TAB 트리거 (CTRL 활성 상태에서 TAB 클릭)
+     - 드래그 / 위치 저장 / 레이아웃 토글
+     - 버튼 → 기존 키패드 버튼 .click() forward
+══════════════════════════════════════════════════════════════ -->
+
+<!-- ═════════════════════════════════════════════════════════════
+     MENU TOOL pill 로직 (플로팅 허브)
+     - 단일 [MENU] 버튼: 탭 → 허브 메뉴 오픈
+     - Floats 그룹: Run/SQL/Copy pill 토글 (is-active로 현재 상태 표시)
+     - This 그룹: 자기 Horizontal / Hide
+     - 풋터 btnMenuTool: pill 자체 토글 (기존 Run/Sql View 패턴 동일)
+══════════════════════════════════════════════════════════════ -->
+<!-- ═════════════════════════════════════════════════════════════
+     PANEL DRAG + AUTO-CLAMP — 모든 플로팅 패널 공통 적용
+     헤더 영역 드래그로 패널 이동 가능 + 아코디언 토글 시 경계 보정
+══════════════════════════════════════════════════════════════ -->
+<!-- ═════════════════════════════════════════════════════════════
+     BLOCK TOOL pill — 퀵멀티 전용 플로팅 (Claude 주황 테마)
+     단일 [BLK] 버튼. 탭 → 멀티 모드 탈출 (퀵일반 복귀)
+     드래그 가능 — 위치는 localStorage('usekit_blk_float_pos')에 저장
+     표시 조건: body.qn-multi-on-active (멀티 진입 시 자동 표시)
+══════════════════════════════════════════════════════════════ -->
+<div id="floatBlkTool">
+  <button id="qnBlkOff" class="fb" aria-label="Exit multi-block mode">
+    <span class="fb-icon">⌨</span>
+    <span class="fb-label">OFF</span>
+  </button>
+</div>
+
+    <script src="js2/float/float_sql.js?v=0.2.0"></script>
+    <script src="js2/float/float_run.js?v=0.2.0"></script>
+    <script src="js2/float/float_clip.js?v=0.2.0"></script>
+    <script src="js2/float/float_menu.js?v=0.2.0"></script>
+    <script src="js2/float/float_common.js?v=0.2.0"></script>
+</body>
+</html>
