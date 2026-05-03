@@ -1,0 +1,6 @@
+examples/json_append_emit/
+├── README.md
+├── TREE.txt
+├── json_append_emit_demo.py
+└── snapshot/
+    └── 01.png
