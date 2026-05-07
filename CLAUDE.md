@@ -2,6 +2,8 @@
 
 This is a **USEKIT project** — Memory-Oriented Software Architecture (MOSA).
 
+> 세션 히스토리 및 미완 과제 → `docs/base/SESSIONS.md` 참조
+
 ---
 
 ## Quick Reference
