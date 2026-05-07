@@ -220,17 +220,37 @@ src/base/
 ### API
 
 ```python
-# xpb — 함수 실행, 결과 반환
-result = u.xpb("calc:add", 10, 20)          # → 30
-result = u.xpb("test.test:add", 10, 20)     # → 30  (중첩 경로)
+# xpb — 함수 실행, 결과 반환 (args / kwargs 모두 지원)
+result = u.xpb("calc:add", 10, 20)               # → 30
+result = u.xpb("test.test:add", 10, 20)          # → 30  (중첩 경로)
+result = u.xpb("demo:report", "Alice", 95)        # → {'name': 'Alice', ...}
+result = u.xpb("demo:report", "Bob", grade="B")   # → kwargs 지원
 
 # ipb — 모듈 객체 반환
-calc = u.ipb("calc")                         # → <module>
-calc.add(3, 4)                               # → 7
+calc = u.ipb("calc")                              # → <module>
+calc.add(3, 4)                                    # → 7
 
 # imp.pyp.sub — sub 모듈에서 함수를 현재 네임스페이스로 주입
-use.imp.pyp.sub("utils : upper, repeat")     # upper(), repeat() 직접 사용 가능
+use.imp.pyp.sub("utils : upper, repeat")          # upper(), repeat() 직접 사용 가능
 use.imp.pyp.sub("ledger_parts.data : get_records, get_budgets")
+```
+
+### REPL 실행기 패턴
+
+`from usekit import u` 한 줄이면 **import 없이 어떤 모듈의 함수든 즉시 실행** 가능.
+REPL, 스크립트, 자동화 모두 동일한 방식으로 동작한다.
+
+```python
+from usekit import u
+
+# 파일이 src/base/에 있으면 바로 호출
+u.xpb("calc:add", 3, 7)              # → 10
+u.xpb("calc:greet", "world")         # → "안녕, world!"
+u.xpb("test.test:add", 100, 200)     # → 300
+
+# 루프에서도 동일
+for name, score in [("Alice", 95), ("Bob", 72)]:
+    result = u.xpb("demo:report", name, score)
 ```
 
 ---
