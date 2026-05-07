@@ -64,12 +64,10 @@ u.ejm({"k": "v"})                 # emit json mem → str
 u.[ACTION][FORMAT][LOCATION]()
 ```
 
-| 분류 | ACTION | FORMAT | LOCATION |
-|------|--------|--------|----------|
-| 코드 | r w u d h e / p f l g s / x i b c | j y c t m s d p k a | b s t d n c |
-| 전체 | read write update delete has emit / path find list get set / exec imp boot close | json yaml csv txt md sql ddl pyp km any | base sub tmp dir now cache |
+전체 테이블 → `docs/base/manual/usekit/02_routing.md`
 
-> `m`(mem) — emit 전용 / `cus=` — custom preset / `loc=p` — pre-defined path
+> DATA: `r w u d h e` / NAVI: `p f l g s` / EXEC: `x i b c`  
+> FORMAT: `j y c t m s d p k a` / LOCATION: `b s t d n c`
 
 ---
 
