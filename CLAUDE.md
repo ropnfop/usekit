@@ -307,7 +307,7 @@ u.xpb("score_app")
 
 ### 출력 보관 패턴
 
-실행 결과를 JSON / TXT 로 별도 저장:
+실행 결과를 JSON / TXT / MD 로 별도 저장:
 
 ```python
 from usekit import u, uw, ut
@@ -317,7 +317,22 @@ u.wjb({"ts": ut.str(), "result": result}, "output_log", append=True, append_mode
 
 # TXT로 로그 누적
 u.wtb(f"[{ut.str()}] {message}", "run_log", append=True)
+
+# MD로 리포트 저장 → docs/base/report.md
+md = f"""# 결과 리포트
+
+생성: {ut.str()}
+
+## 내용
+...
+"""
+u.wmb(md, "report")
 ```
+
+저장 위치:
+- `u.wjb()` → `data/json/base/`
+- `u.wtb()` → `data/common/txt/`
+- `u.wmb()` → `docs/base/`
 
 > `uw.history()`는 `uw.p()`로 출력한 것만 기록함. `uw.ok()` / `uw.info()` 등은 포함 안 됨.
 
