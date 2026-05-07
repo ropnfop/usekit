@@ -25,9 +25,9 @@ from usekit.classes.wrap.safe.use_safe import safe, s
 _tick("USEKIT safe loaded")
 
 # [OPTIONAL: PRELOAD SAFE IN BACKGROUND]
-# Colab 제외 — 인터렉티브 환경은 첫 호출 지연 무관
-from usekit.classes.core.env.loader_env import is_colab as _is_colab
-if not _is_colab():
+# Colab + Drive 없음은 skip (휘발성 환경, 임포트 속도 우선)
+from usekit.classes.wrap.base.use_base import _should_preload
+if _should_preload():
     safe.preload()
 _tick("USEKIT safe preload started")
 

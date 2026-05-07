@@ -22,12 +22,19 @@ from usekit.help.use_help import show_help
 from usekit.classes.wrap.base.use_interface import termux, colab, check, editor
 from usekit.classes.core.env.loader_env import is_colab as _is_colab
 
+def _should_preload() -> bool:
+    if not _is_colab():
+        return True
+    from pathlib import Path
+    return Path("/content/drive/MyDrive").exists()
+
 # ───────────────────────────────────────────────────────────────
-# 병렬 로딩 최적화 (Colab 제외 — 인터렉티브 환경은 첫 호출 지연 무관)
+# 병렬 로딩 최적화
+# Colab + Drive 없음은 skip (휘발성 환경, 임포트 속도 우선)
 # ───────────────────────────────────────────────────────────────
 _executor = ThreadPoolExecutor(max_workers=20)
 
-if not _is_colab():
+if _should_preload():
     preload_io()
     _tick("DataUse preload_io end")
     preload_navi_io()
