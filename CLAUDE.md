@@ -6,6 +6,15 @@ This is a **USEKIT project** — Memory-Oriented Software Architecture (MOSA).
 
 ---
 
+## Git 규칙 (필수)
+
+1. **세션 시작 즉시** `git checkout main && git pull origin main` 실행
+2. **main에서 직접** 작업·커밋·푸시
+3. **별도 브랜치 생성 금지** — 명시적 요청 시에만 예외
+4. **작업 완료 시** 반드시 `git push origin main` 까지 완료
+
+---
+
 ## Manual
 
 ```
