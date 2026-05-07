@@ -241,6 +241,12 @@ s.rjb("name")    # safe read   — 없으면 None 반환
 
 - **emit(e)** → `u.ejm()` 사용 (short alias만 안정), `use.emit.json.mem()` full-name은 현재 미작동
 - **emit(e)** → mem(m) 위치만: `u.ejm(data={...})` ✅ / `u.ejb()` ❌
+- **emit 반환값** → 항상 `str` (파일 저장 없음, 메모리 직렬화만)
+  ```python
+  u.ejm({"k": "v"})   # → '{\n  "k": "v"\n}'  (str)
+  u.ejm([1, 2, 3])    # → '[\n  1,\n  2,\n  3\n]'  (str)
+  u.ejm("hello")      # → 'hello'  (str)
+  ```
 - **delete 패턴 안전장치** → `u.djb(name="*")` 차단됨
 - **name 미지정** → dumps(가상메모리), 파일 생성 안 됨
 - **SQL row** → `row.col` 속성 접근, `row._fields` 컬럼명 리스트
