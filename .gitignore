@@ -23,6 +23,7 @@ env/
 # Secrets
 .env
 .env.*
+!usekit/.env.example
 *.key
 *.pem
 
