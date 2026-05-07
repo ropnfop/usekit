@@ -418,6 +418,27 @@ s.rjb("name")    # safe read   — 없으면 None 반환
 
 ---
 
+## Help System
+
+```python
+# 토픽별 도움말
+use.help("overview")    # MOSA 아키텍처 개요
+use.help("quick")       # 퀵스타트 가이드
+use.help("action")      # 액션 목록
+use.help("object")      # 포맷 목록
+use.help("location")    # 위치 목록
+use.help("examples")    # 사용 예제
+use.help("keydata")     # 중첩 경로 접근
+use.help("walk")        # 재귀 검색
+use.help("alias")       # 파라미터 별칭
+use.help("pattern")     # 패턴 매칭
+
+# 개별 메서드 도움말
+help(u.rjb)             # "read json base"
+```
+
+---
+
 ## Constraints
 
 - **emit(e)** → `u.ejm()` 사용 (short alias만 안정), `use.emit.json.mem()` full-name은 현재 미작동
