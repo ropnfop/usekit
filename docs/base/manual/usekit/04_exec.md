@@ -137,6 +137,30 @@ u.xpb("test:main")    # 함수 모드 → 42
 
 ---
 
+## 출력 보관 패턴
+
+실행 결과를 JSON / TXT / MD 로 저장 — `ut`로 타임스탬프 포함.
+
+```python
+from usekit import u, ut
+
+# JSON 누적 (JSONL)
+u.wjb({"ts": ut.str(), "result": result}, "output_log", append=True, append_mode="jsonl")
+
+# TXT 로그 누적
+u.wtb(f"[{ut.str()}] {message}", "run_log", append=True)
+
+# MD 리포트
+u.wmb(f"# 리포트\n\n생성: {ut.str()}\n\n...", "report")
+```
+
+저장 위치:
+- `u.wjb()` → `data/json/base/`
+- `u.wtb()` → `data/common/txt/`
+- `u.wmb()` → `docs/base/`
+
+---
+
 ## SQL / DDL
 
 ```python
