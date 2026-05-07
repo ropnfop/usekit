@@ -269,6 +269,24 @@ result = u.xpb("calc:add", 3, 7)  # → 10
 | `u.xpb("mod")` | `if __name__ == "__main__"` 블록 | 없음 |
 | `u.xpb("mod:func", *args)` | 지정 함수 | 함수 반환값 |
 
+### 작성 후 즉시 실행 패턴
+
+`u.wpb()`로 소스를 작성하고 `u.xpb()`로 바로 실행 — 코드 생성과 실행을 한 흐름으로 처리.
+
+```python
+u.wpb(r'''
+def main():
+    print("동적 스크립트")
+    return 42
+
+if __name__ == "__main__":
+    main()
+''', "test")
+
+u.xpb("test")           # 스크립트 실행 (src/base/test.py 저장됨)
+u.xpb("test:main")      # 함수 호출 → 42
+```
+
 ---
 
 ## Support Utilities
