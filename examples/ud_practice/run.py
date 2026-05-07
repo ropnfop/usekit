@@ -89,16 +89,25 @@ uw.ok(f"delete → rowcount={cnt}")
 
 # ── 8. 트랜잭션 (tx context) ─────────────────────
 uw.p("\n[8] 트랜잭션 (tx context)")
-try:
-    with ud.tx():
-        ud.exec("INSERT INTO orders (user_id, item, price) VALUES (?, ?, ?)", 2, "Monitor", 299.99)
-        ud.exec("INSERT INTO orders (user_id, item, price) VALUES (?, ?, ?)", 2, "Webcam",   59.99)
-    uw.ok(f"tx 성공  orders count={ud.count('orders')}")
-except Exception as e:
-    uw.err(f"tx 실패: {e}")
 
-# rollback 시나리오
-uw.p("\n  [rollback 시나리오]")
+# 8-a. 기존 연결 재사용 방식
+uw.p("  [8-a] tx() — 기존 연결 재사용")
+with ud.tx():
+    ud.exec("INSERT INTO orders (user_id, item, price) VALUES (?, ?, ?)", 2, "Monitor", 299.99)
+    ud.exec("INSERT INTO orders (user_id, item, price) VALUES (?, ?, ?)", 2, "Webcam",   59.99)
+uw.ok(f"tx 성공  orders count={ud.count('orders')}")
+
+# 8-b. path 지정 방식 — 열기·닫기 포함
+uw.p("  [8-b] tx(path) — 연결 열기·닫기 포함")
+ud.close()
+with ud.tx(DB):
+    ud.exec("INSERT INTO orders (user_id, item, price) VALUES (?, ?, ?)", 3, "Speaker", 129.99)
+# tx(path)는 블록 종료 시 연결을 닫으므로 재연결 후 확인
+ud.conn(DB)
+uw.ok(f"tx(path) 성공  orders count={ud.count('orders')}")
+
+# 8-c. rollback 시나리오
+uw.p("  [8-c] rollback 시나리오")
 try:
     with ud.tx():
         ud.exec("INSERT INTO orders (user_id, item, price) VALUES (?, ?, ?)", 3, "Ghost", 0)
@@ -116,6 +125,8 @@ uw.p(f"  has('users') : {ud.has('users')}")
 uw.p(f"  has('ghost') : {ud.has('ghost')}")
 uw.p(f"  count(users) : {ud.count('users')}")
 uw.p(f"  count(orders): {ud.count('orders')}")
+ud.vacuum()
+uw.ok("vacuum 완료")
 
 # ── 10. 종료 ─────────────────────────────────────
 uw.p("\n[10] 연결 종료")
