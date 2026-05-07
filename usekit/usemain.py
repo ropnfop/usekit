@@ -25,8 +25,10 @@ from usekit.classes.wrap.safe.use_safe import safe, s
 _tick("USEKIT safe loaded")
 
 # [OPTIONAL: PRELOAD SAFE IN BACKGROUND]
-# Uncomment to start loading safe immediately (adds ~0s to startup, eliminates 8s first-use delay)
-safe.preload()
+# Colab 제외 — 인터렉티브 환경은 첫 호출 지연 무관
+from usekit.classes.core.env.loader_env import is_colab as _is_colab
+if not _is_colab():
+    safe.preload()
 _tick("USEKIT safe preload started")
 
 # [SUPPORT UTILITIES: Time & Watch & Database]

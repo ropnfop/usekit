@@ -20,20 +20,22 @@ _tick("I/O config")
 
 from usekit.help.use_help import show_help
 from usekit.classes.wrap.base.use_interface import termux, colab, check, editor
+from usekit.classes.core.env.loader_env import is_colab as _is_colab
 
 # ───────────────────────────────────────────────────────────────
-# 병렬 로딩 최적화
+# 병렬 로딩 최적화 (Colab 제외 — 인터렉티브 환경은 첫 호출 지연 무관)
 # ───────────────────────────────────────────────────────────────
 _executor = ThreadPoolExecutor(max_workers=20)
 
-preload_io()
-_tick("DataUse preload_io end")
-preload_navi_io()
-_tick("NaviUse preload_navi_io end")
-preload_exec_io()
-_tick("ExecUse preload_exec_io end")
-preload_sp()
-_tick("Simple preload_sp end")
+if not _is_colab():
+    preload_io()
+    _tick("DataUse preload_io end")
+    preload_navi_io()
+    _tick("NaviUse preload_navi_io end")
+    preload_exec_io()
+    _tick("ExecUse preload_exec_io end")
+    preload_sp()
+    _tick("Simple preload_sp end")
 
 
 # ───────────────────────────────────────────────────────────────
