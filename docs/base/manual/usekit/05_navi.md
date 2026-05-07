@@ -15,21 +15,24 @@ NAVI는 ACTION의 한 분류 — **파일 탐색 + 경로/값 저장** 전용.
 ## p — path (디렉토리 경로)
 
 ```python
-u.pjb()               # data/json/base/ 의 절대경로
-u.pjb("sub/dir")      # data/json/base/sub/dir/ 의 절대경로
-u.ptb()               # data/tmp/ 의 절대경로
+u.pjb()                        # data/json/base/ 의 절대경로
+u.pjb(dir_path="sub/dir")     # data/json/base/sub/dir/ 의 절대경로
+u.ptb()                        # data/tmp/ 의 절대경로
 ```
 
-> 반환값: `PosixPath` — `str()` 변환 또는 `/` 연산 가능
+> 반환값: `PosixPath` — `str()` 변환 또는 `/` 연산 가능  
+> 첫 번째 positional 인자는 `name=` 으로 해석됨. 서브 경로는 반드시 `dir_path=` 키워드로 지정.
 
 ---
 
 ## f — find (패턴 탐색)
 
+패턴 인자 필수 — 없으면 `ValueError`.
+
 ```python
-u.fjb("user_*")       # data/json/base/ 에서 user_*.json 매칭 → PosixPath 리스트
-u.fjb("*.json")       # 모든 JSON 파일
-u.fjb("log_*", walk=True)   # 하위 디렉토리 포함 재귀 탐색
+u.fjb("user_*")                      # data/json/base/ 에서 user_*.json 매칭
+u.fjb("log_*", walk=True)            # 하위 디렉토리 포함 재귀 탐색
+u.fjb("report_*", dir_path="2026")   # 서브 경로 지정
 ```
 
 > 반환값: `List[PosixPath]`
@@ -39,11 +42,12 @@ u.fjb("log_*", walk=True)   # 하위 디렉토리 포함 재귀 탐색
 ## l — list (파일 목록)
 
 ```python
-u.ljb()               # data/json/base/ 의 파일명 리스트 (확장자 포함)
-u.ljb("sub/dir")      # 서브 경로 지정
+u.ljb()                        # data/json/base/ 의 파일·디렉토리 목록
+u.ljb(dir_path="sub/dir")     # 서브 경로 지정
 ```
 
-> 반환값: `List[str]` — 파일명 문자열
+> 반환값: `List[str]` — 파일명 문자열 (디렉토리는 `"sub/"` 형태로 포함됨)  
+> 서브 경로는 `dir_path=` 키워드로 지정.
 
 ---
 
