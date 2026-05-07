@@ -41,7 +41,7 @@ u.[ACTION][FORMAT][LOCATION]()
 | **기타** | `k` | km (keymemory) |
 | | `a` | any |
 
-## LOCATION (7)
+## LOCATION (8)
 
 | 분류 | 코드 | 전체 이름 |
 |------|------|-----------|
@@ -51,9 +51,11 @@ u.[ACTION][FORMAT][LOCATION]()
 | | `d` | dir |
 | **기타** | `n` | now |
 | | `c` | cache |
+| | `m` | mem (프로세스 메모리, 파일 없음) |
 | | — | cus (custom preset, `cus=` 파라미터로 지정) |
 
-> `m` (mem) 은 `u.ejm()` emit 전용 — 일반 loc 아님  
+> `m` (mem) — r/w/u/d/h/l 모든 DATA·NAVI 액션 지원. 파일 I/O 없음.  
+> `e` (emit) 도 mem 전용이나 직렬화 목적 (반환값 str).  
 > `loc=p` → `pre`(pre-defined path), path가 아님
 
 ---
@@ -74,6 +76,12 @@ u.[ACTION][FORMAT][LOCATION]()
 | `u.xdb()` | exec ddl base | `u.xdb("CREATE TABLE ...")` |
 | `u.xpb()` | exec pyp base | `u.xpb("mod:func", arg1)` |
 | `u.ipb()` | import pyp base | `u.ipb("module_name")` |
-| `u.ejm()` | emit json mem | `u.ejm({"k": "v"})` |
+| `u.ejm()` | emit json mem | `u.ejm({"k": "v"})` → str |
+| `u.wjm()` | write json mem | `u.wjm(data, "key")` |
+| `u.rjm()` | read json mem | `u.rjm("key")` |
+| `u.ujm()` | update json mem | `u.ujm({"b": 99}, "key")` (dict 병합) |
+| `u.djm()` | delete json mem | `u.djm("key")` |
+| `u.hjm()` | has json mem | `u.hjm("key")` → bool |
+| `u.ljm()` | list json mem | `u.ljm()` → 전체 키 목록 |
 | `u.sjb()` | set json base | `u.sjb("data/dev", "env_path")` |
 | `u.gjb()` | get json base | `u.gjb("env_path")` |

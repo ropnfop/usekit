@@ -56,7 +56,15 @@ u.xsb("SELECT * FROM users")      # exec sql base → namedtuple rows
 u.xdb("CREATE TABLE ...")          # exec ddl base
 u.xpb("mod:func", arg)            # exec pyp base
 u.ipb("module")                    # import pyp base
-u.ejm({"k": "v"})                 # emit json mem → str
+u.ejm({"k": "v"})                 # emit json mem → str (직렬화)
+
+# mem store (파일 없음, 프로세스 메모리)
+u.wjm(data, "key")                 # write json mem
+u.rjm("key")                       # read json mem
+u.ujm({"b": 99}, "key")           # update json mem (dict 병합)
+u.djm("key")                       # delete json mem
+u.hjm("key")                       # has json mem → bool
+u.ljm()                            # list json mem → 전체 키 목록
 ```
 
 ---
@@ -79,7 +87,8 @@ u.[ACTION][FORMAT][LOCATION]()
 전체 테이블 → `docs/base/manual/usekit/02_routing.md`
 
 > DATA: `r w u d h e` / NAVI: `p f l g s` / EXEC: `x i b c`  
-> FORMAT: `j y c t m s d p k a` / LOCATION: `b s t d n c`
+> FORMAT: `j y c t m s d p k a` / LOCATION: `b s t d n c m`  
+> `m` (mem) — r/w/u/d/h + l(NAVI) 지원. 파일 없음, 프로세스 메모리.
 
 ---
 
@@ -128,7 +137,8 @@ s.djb("name")   # 없어도 무시
 
 ## Constraints
 
-- `u.ejm()` — emit은 `mem` 전용. 반환값 `str`.
+- `u.ejm()` — 직렬화 전용. 저장 없음, 반환값 `str`.
+- `u.wjm()` — mem store 저장. 프로세스 재시작 시 소멸.
 - `u.djb(name="*")` — 와일드카드 삭제 차단.
 - `name` 미지정 → dumps 모드 (파일 생성 안 됨).
 - SQL row → `row.col` 속성 접근, `row._fields` 컬럼명.
