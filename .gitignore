@@ -18,6 +18,7 @@ dist/
 .venv/
 venv/
 env/
+!usekit/**/env/
 
 # Secrets
 .env
