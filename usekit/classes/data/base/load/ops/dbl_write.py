@@ -159,12 +159,20 @@ def write_operation(**kwargs) -> Optional[Path]:
         PosixPath('/path/to/log.txt')
     """
     
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # Mem shortcut — no file I/O
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if kwargs.get("loc") == "mem":
+        from usekit.classes.data.base.load.ops.dbl_mem_store import mem_write
+        mem_write(kwargs.get("name"), kwargs.get("data"))
+        return None
+
     # Extract parameters
     p = params_for_write(**kwargs)
-    
+
     # Warn about future features (k, kv, kc, kf)
     warn_future_features(p)
-    
+
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # [0] Handle fmt=any for write operations
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

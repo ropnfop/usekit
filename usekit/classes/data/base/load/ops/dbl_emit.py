@@ -7,10 +7,21 @@
 from __future__ import annotations
 from typing import Union
 
-from usekit.infra.io_signature import params_for_emit, warn_future_features
+import warnings
 from usekit.classes.common.errors.helper_debug import log_and_raise
 from usekit.classes.data.base.load.sub.dbl_emit_sub import proc_emit_data
 from usekit.classes.data.base.load.sub.dbl_common_sub import _filter_dump_kwargs
+
+# Minimal defaults for emit — avoids copying ALL_DEFAULTS (42 keys) on every call
+_EMIT_DEFAULTS: dict = {
+    "data": None,
+    "name": None,
+    "fmt": "json",
+    "loc": "mem",
+    "mode": "emit",
+    "debug": False,
+    "type": "s",
+}
 
 
 # ===============================================================================
@@ -77,11 +88,17 @@ def emit_operation(**kwargs) -> Union[str, dict, list, bytes]:
     Memory-only serialization operation (no file I/O).
     """
 
-    # Extract parameters
-    p = params_for_emit(**kwargs)
+    # Minimal param extraction — emit never needs file/targeting params
+    p = {**_EMIT_DEFAULTS, **kwargs}
 
-    # Warn about future features (k, kv, kc, kf)
-    warn_future_features(p)
+    # Warn only when future-reserved keys are actually passed
+    if any(kwargs.get(k) is not None for k in ("k", "kv", "kf")) or kwargs.get("kc", "eq") != "eq":
+        warnings.warn(
+            "Future features (k, kv, kc, kf) are not yet implemented. "
+            "These parameters will be ignored in the current version.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # [1] Force memory-only restriction

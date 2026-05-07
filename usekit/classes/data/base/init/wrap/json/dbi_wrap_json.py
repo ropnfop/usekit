@@ -179,6 +179,26 @@ def has_json_cache(name=None, dir_path=None, keydata=None, cus=None, **kwargs):
     return _DataHd.has_cache(name=name, dir_path=dir_path, keydata=keydata, cus=cus, **kwargs)
 
 # ─────────────────────────────────────────────────────────────────────────────
+# MEM — process-level in-memory store (no file I/O)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def read_json_mem(name=None, **kwargs):
+    """Read from in-memory store."""
+    return _DataHd.read_mem(name=name, **kwargs)
+
+def write_json_mem(data=None, name=None, **kwargs):
+    """Write to in-memory store."""
+    return _DataHd.write_mem(data=data, name=name, **kwargs)
+
+def delete_json_mem(name=None, **kwargs):
+    """Delete from in-memory store."""
+    return _DataHd.delete_mem(name=name, **kwargs)
+
+def has_json_mem(name=None, **kwargs):
+    """Check existence in in-memory store."""
+    return _DataHd.has_mem(name=name, **kwargs)
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Usage Examples
 # ─────────────────────────────────────────────────────────────────────────────
 

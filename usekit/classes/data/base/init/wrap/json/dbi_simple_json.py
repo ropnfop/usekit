@@ -29,8 +29,11 @@ from usekit.classes.data.base.init.wrap.json.dbi_wrap_json import (
     has_json_base, has_json_sub, has_json_dir, has_json_now,
     has_json_tmp, has_json_pre, has_json_cache,
 )
-# EMIT
-from usekit.classes.data.base.init.wrap.json.dbi_wrap_json import emit_json_mem
+# EMIT + MEM
+from usekit.classes.data.base.init.wrap.json.dbi_wrap_json import (
+    emit_json_mem,
+    read_json_mem, write_json_mem, delete_json_mem, has_json_mem,
+)
 
 # ===============================================================================
 # JsonSimple class - Ultra-short interface with alias support
@@ -255,7 +258,28 @@ class JsonSimple:
         """has json cache : supports positional, keyword, and alias (nm, dp, kd)"""
         return _wrap_read_format(has_json_cache)(name, dir_path, keydata, cus, **kwargs)
 
-# Singleton-style export
+    # ─────────────────────────────────────
+    # MEM (rjm/wjm/djm/hjm) - in-memory store
+    # ─────────────────────────────────────
+    @staticmethod
+    def rjm(name=None, **kwargs):
+        """read json mem : read from in-memory store"""
+        return read_json_mem(name=name, **kwargs)
+
+    @staticmethod
+    def wjm(data=None, name=None, **kwargs):
+        """write json mem : write to in-memory store"""
+        return write_json_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def djm(name=None, **kwargs):
+        """delete json mem : delete from in-memory store"""
+        return delete_json_mem(name=name, **kwargs)
+
+    @staticmethod
+    def hjm(name=None, **kwargs):
+        """has json mem : check existence in in-memory store"""
+        return has_json_mem(name=name, **kwargs)
 
     # ─────────────────────────────────────
     # EMIT (ejm) - memory-only serialization
