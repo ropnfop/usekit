@@ -434,7 +434,25 @@ use.help("alias")       # 파라미터 별칭
 use.help("pattern")     # 패턴 매칭
 
 # 개별 메서드 도움말
-help(u.rjb)             # "read json base"
+help(u.rjb)             # "read json base" (간략)
+```
+
+### 파라미터 정의서 (Signature)
+
+전체 파라미터는 `usekit/infra/` 에 3레이어로 정의되어 있음:
+
+| 파일 | 대상 | 역할 |
+|------|------|------|
+| `infra/io_signature.py` | DATA / NAVI | I/O 파라미터 정의 |
+| `infra/exec_signature.py` | EXEC | 실행 파라미터 정의 |
+| `infra/io_signature_doc.py` | 공통 | 파라미터 문서 + 예제 |
+
+**3레이어 구조:**
+
+```
+USER LAYER     — 의도 표현: data, name, dir_path, keydata, loc, cus
+TARGETING LAYER — 대상 선택: walk, append, append_mode, regex, tail_* 등
+SYSTEM LAYER   — 실행 제어: fmt, mode, encoding, debug 등
 ```
 
 ---
