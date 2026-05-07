@@ -101,8 +101,10 @@ u.[ACTION][FORMAT][LOCATION]()
 | `u.xdb()` | exec ddl base | `u.xdb("CREATE TABLE ...")` |
 | `u.xpb()` | exec pyp base | `u.xpb("mod:func", arg1)` |
 | `u.ipb()` | import pyp base | `u.ipb("module_name")` |
-| `u.gjb()` | get json base (read+keydata) | `u.gjb("cfg", keydata="user/email")` |
 | `u.ejm()` | emit json mem | `u.ejm({"k": "v"})` |
+| `u.pjb()` | path json base (디렉토리 경로) | `u.pjb()` |
+| `u.fjb()` | find json base (PosixPath 리스트) | `u.fjb("user_*")` |
+| `u.ljb()` | list json base (파일명 문자열 리스트) | `u.ljb()` |
 
 ### Positional Args
 
@@ -119,7 +121,9 @@ u.hjb("config")
 ```python
 data=           # 쓸 데이터 (w/u 필수)
 name=           # 파일명 (확장자 자동추가, 미지정=dumps)
-keydata=        # 중첩 경로 "user/email", "items[0]/name"
+keydata=        # 중첩 경로 — r/u 에서 사용, "user/email", "items[0]/name"
+                # u.rjb("name", keydata="user/email")  ← 정확한 패턴
+                # u.gjb() 는 keydata 데이터 접근 안 됨 (경로 메타용)
 walk=True       # 하위 디렉토리 재귀 검색
 default=        # keydata 없을 때 기본값
 append=True     # 기존 파일에 추가
