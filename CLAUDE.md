@@ -253,6 +253,22 @@ for name, score in [("Alice", 95), ("Bob", 72)]:
     result = u.xpb("demo:report", name, score)
 ```
 
+### 두 가지 실행 모드
+
+```python
+# 1. 스크립트 모드 — 함수명 생략, if __name__ == "__main__" 블록 실행
+u.xpb("main")           # main.py 의 __main__ 블록 실행, 반환값 없음
+
+# 2. 함수 모드 — 특정 함수 호출, 반환값 있음
+result = u.xpb("main:main")    # → "done"
+result = u.xpb("calc:add", 3, 7)  # → 10
+```
+
+| 형태 | 실행 대상 | 반환값 |
+|------|-----------|--------|
+| `u.xpb("mod")` | `if __name__ == "__main__"` 블록 | 없음 |
+| `u.xpb("mod:func", *args)` | 지정 함수 | 함수 반환값 |
+
 ---
 
 ## Support Utilities
