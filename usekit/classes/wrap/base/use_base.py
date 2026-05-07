@@ -97,6 +97,7 @@ use = _UseNamespace(
     update=DataIO.update,
     delete=DataIO.delete,
     has=DataIO.has,
+    emit=DataIO.emit,
 
     # ========== NAVI Operations ==========
     # Operation-first access (use.path.json.base)

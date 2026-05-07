@@ -464,7 +464,7 @@ SYSTEM LAYER   — 실행 제어: fmt, mode, encoding, debug 등
 
 ## Constraints
 
-- **emit(e)** → `u.ejm()` 사용 (short alias만 안정), `use.emit.json.mem()` full-name은 현재 미작동
+- **emit(e)** → `u.ejm()` 또는 `use.emit.json.mem()` 동일하게 사용 가능
 - **emit(e)** → mem(m) 위치만: `u.ejm(data={...})` ✅ / `u.ejb()` ❌
 - **emit 반환값** → 항상 `str` (파일 저장 없음, 메모리 직렬화만)
   ```python
