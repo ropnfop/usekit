@@ -71,18 +71,19 @@ u.[ACTION][FORMAT][LOCATION]()
 | **기타** | `k` | km (keymemory) |
 | | `a` | any |
 
-### LOCATION (8)
+### LOCATION (7)
 
 | 분류 | 코드 | 전체 이름 |
 |------|------|-----------|
 | **기본** | `b` | base |
 | | `s` | sub |
-| | `d` | dir |
-| | `n` | now |
 | | `t` | tmp |
-| **확장** | `p` | pre |
+| | `d` | dir |
+| **기타** | `n` | now |
 | | `c` | cache |
-| | `m` | mem |
+| | —  | cus (custom preset, `cus=` 파라미터로 지정) |
+
+> `m` (mem) 은 `u.ejm()` emit 전용, 일반 loc 아님
 
 ---
 
