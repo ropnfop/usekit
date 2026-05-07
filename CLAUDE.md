@@ -14,7 +14,7 @@ from usekit import use        # full-chain (readable code)
 from usekit import safe, s    # safe mode (lazy load, ~8s first use)
 from usekit import uw         # watch/output: uw.p(), uw.ok(), uw.warn()
 from usekit import ut         # time utils: ut.now(), ut.stamp()
-from usekit import ud         # DB utils: ud.query(), ud.execute()
+from usekit import ud         # DB utils: ud.conn(), ud.exec(), ud.fetch()
 
 # Same thing, two styles:
 u.rjb(name="config")          # read json base
@@ -443,6 +443,66 @@ ut.sleep_ms(500)                  # 밀리초 단위 대기
 s.djb("name")    # safe delete — 파일 없어도 crash 없음
 s.rjb("name")    # safe read   — 없으면 None 반환
 ```
+
+### ud — Database (SQLite3 전용)
+
+`use`/`u`와 별개인 **SQLite3 저수준 직접 제어 도구**.
+연결·실행·페치·종료를 개별적으로 처리한다.
+
+```python
+from usekit import ud
+
+# ── 연결 / 종료 ─────────────────────────────────────────
+ud.conn("data/table/db/base.db")   # 연결 (자동 디렉토리 생성)
+ud.close()                          # 종료
+ud.is_open()                        # bool
+
+# ── 실행 ────────────────────────────────────────────────
+ud.exec("CREATE TABLE IF NOT EXISTS t (id INTEGER PRIMARY KEY, name TEXT)")
+ud.exec("INSERT INTO t VALUES (?, ?)", 1, "Alice")          # positional
+ud.exec("INSERT INTO t VALUES (?, ?)", (1, "Alice"))         # tuple
+ud.exec("UPDATE t SET name=:n WHERE id=:id", {"n": "B", "id": 1})  # dict
+ud.exec("DELETE FROM t WHERE id = ?", 1, commit=True)       # commit=True
+
+# ── 조회 ────────────────────────────────────────────────
+rows = ud.fetch("SELECT * FROM t WHERE age > ?", 20)
+row  = ud.one("SELECT * FROM t WHERE id = ?", 1)
+print(row.name)      # 속성 접근 (row.col)
+print(row._fields)   # 컬럼명 리스트
+
+# ── 배치 / 스크립트 ─────────────────────────────────────
+ud.many("INSERT INTO t VALUES (?, ?)", [(1, "A"), (2, "B")], commit=True)
+ud.script("CREATE TABLE a (x INT); CREATE TABLE b (y TEXT);")
+
+# ── 트랜잭션 ────────────────────────────────────────────
+ud.commit()
+ud.rollback()
+
+with ud.tx("data/table/db/base.db"):   # 열기 + commit/rollback + 닫기
+    ud.exec("INSERT INTO t VALUES (?, ?)", 3, "Charlie")
+
+ud.conn("data/table/db/base.db")
+with ud.tx():                           # 기존 연결 사용, commit/rollback만
+    ud.exec("UPDATE t SET name = ? WHERE id = ?", "Dave", 1)
+ud.close()
+
+# ── CRUD 헬퍼 ───────────────────────────────────────────
+ud.insert("t", {"id": 4, "name": "Eve"})
+ud.update("t", {"name": "Frank"}, "id = ?", (4,))
+ud.delete("t", "id = ?", (4,))
+ud.select("t", where="id > ?", params=(0,), order="name", limit=10)
+
+# ── 유틸 ────────────────────────────────────────────────
+ud.tables()         # → ["t", "users", ...]
+ud.cols("t")        # → ["id", "name"]
+ud.has("t")         # → True / False
+ud.count("t")       # → 42
+ud.vacuum()         # 디스크 최적화
+```
+
+> **`ud` vs `u.xsb`**
+> - `u.xsb()` — USEKIT 경로체계·파일 SQL 통합, 자동 DB 연결, DotDict 반환
+> - `ud.*`     — SQLite3 직접 제어, 연결 수동 관리, 속성 접근 namedtuple 반환
 
 ---
 

@@ -6,452 +6,260 @@
 from __future__ import annotations
 
 import sqlite3
+from collections import namedtuple
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
-from functools import lru_cache
-
-# Type aliases
-Params = Union[Tuple, List, Dict]
-Row = Tuple[Any, ...]
-Rows = List[Row]
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 
-@lru_cache(maxsize=1)
-def _get_default_db_path() -> Path:
-    """Get default database path from sys_const.yaml."""
-    try:
-        from usekit.classes.common.utils.helper_path import inner_abs_db_path
-        return Path(inner_abs_db_path("db"))
-    except Exception:
-        # Fallback to current directory
-        return Path("./usekit.db")
+def _row_factory(cursor, row):
+    fields = [d[0] for d in cursor.description]
+    Row = namedtuple("Row", fields)
+    return Row(*row)
 
 
 class DBHandler:
     """
-    Practical SQLite utilities for usekit.
-    
-    Features:
-        - Connection management with context managers
-        - Query execution with parameter binding
-        - Transaction support (commit/rollback)
-        - Row factory options (tuple/dict/custom)
-        - Safe execution with error handling
-    
+    SQLite3 database utility.
+
+    conn → exec / fetch / one → close
+    tx() 로 트랜잭션 관리.
+
     Examples:
-        # Quick query
-        >>> ud = DBHandler()
-        >>> rows = ud.query("SELECT * FROM users WHERE age > ?", (18,))
-        
-        # Context manager (auto-commit)
-        >>> with ud.connect() as conn:
-        ...     ud.execute("INSERT INTO users VALUES (?, ?)", ("Alice", 30))
-        ...     results = ud.query("SELECT * FROM users")
-        
-        # Transaction control
-        >>> with ud.transaction() as conn:
-        ...     ud.execute("UPDATE users SET age = age + 1")
-        ...     # Auto-commit on success, rollback on error
-        
-        # Dictionary rows
-        >>> ud.set_row_factory("dict")
-        >>> rows = ud.query("SELECT * FROM users")
-        >>> print(rows[0]["name"])
+        ud.conn("data/table/db/base.db")
+        ud.exec("CREATE TABLE IF NOT EXISTS t (id INTEGER PRIMARY KEY, name TEXT)")
+        ud.exec("INSERT INTO t VALUES (?, ?)", 1, "Alice", commit=True)
+        rows = ud.fetch("SELECT * FROM t")
+        row  = ud.one("SELECT * FROM t WHERE id = ?", 1)
+        print(row.name)
+        ud.close()
+
+        with ud.tx("data/table/db/base.db"):
+            ud.exec("INSERT INTO t VALUES (?, ?)", 2, "Bob")
     """
-    
-    def __init__(self, db_path: Optional[Union[str, Path]] = None):
-        """
-        Initialize DBHandler.
-        
-        Parameters:
-            db_path: Database file path (None = use sys_const default)
-        """
-        self.db_path = Path(db_path) if db_path else _get_default_db_path()
+
+    def __init__(self):
         self._conn: Optional[sqlite3.Connection] = None
         self._cursor: Optional[sqlite3.Cursor] = None
-        self._row_factory = None
-        self._in_context = False
-    
-    # ========================================================================
-    # Connection Management
-    # ========================================================================
-    
-    def open(self, db_path: Optional[Union[str, Path]] = None) -> sqlite3.Connection:
-        """
-        Open database connection.
-        
-        Parameters:
-            db_path: Override default database path
-        
-        Returns:
-            Connection object
-        """
-        if db_path:
-            self.db_path = Path(db_path)
-        
-        # Ensure parent directory exists
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        self._conn = sqlite3.connect(str(self.db_path))
-        
-        # Apply row factory if set
-        if self._row_factory:
-            self._conn.row_factory = self._row_factory
-        
+
+    # ── connection ─────────────────────────────────────────────────────────
+
+    def conn(self, path: Union[str, Path]) -> "DBHandler":
+        """Open database connection. Returns self for chaining."""
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        self._conn = sqlite3.connect(str(p))
+        self._conn.row_factory = _row_factory
         self._cursor = self._conn.cursor()
-        return self._conn
-    
+        return self
+
     def close(self):
-        """Close database connection and cursor."""
+        """Close database connection."""
         if self._cursor:
             self._cursor.close()
             self._cursor = None
-        
         if self._conn:
             self._conn.close()
             self._conn = None
-    
+
     def is_open(self) -> bool:
-        """Check if connection is open."""
-        return self._conn is not None and self._cursor is not None
-    
+        """Return True if connection is open."""
+        return self._conn is not None
+
     @contextmanager
-    def connect(self, db_path: Optional[Union[str, Path]] = None) -> Iterator[sqlite3.Connection]:
+    def tx(self, path: Optional[Union[str, Path]] = None) -> Iterator["DBHandler"]:
         """
-        Context manager for database connection (auto-commit on exit).
-        
-        Examples:
-            >>> with ud.connect() as conn:
-            ...     ud.execute("INSERT INTO users VALUES (?, ?)", ("Bob", 25))
+        Transaction context — auto commit on success, rollback on error.
+
+        with ud.tx("data/table/db/base.db"):   # opens + closes
+            ud.exec(...)
+
+        with ud.tx():                           # uses existing conn
+            ud.exec(...)
         """
-        self._in_context = True
+        opened_here = False
+        if path:
+            self.conn(path)
+            opened_here = True
         try:
-            conn = self.open(db_path)
-            yield conn
-            conn.commit()
+            yield self
+            if self._conn:
+                self._conn.commit()
         except Exception:
             if self._conn:
                 self._conn.rollback()
             raise
         finally:
-            self.close()
-            self._in_context = False
-    
-    @contextmanager
-    def transaction(self, db_path: Optional[Union[str, Path]] = None) -> Iterator[sqlite3.Connection]:
+            if opened_here:
+                self.close()
+
+    # ── execution ──────────────────────────────────────────────────────────
+
+    def _resolve_params(self, args):
+        """Normalize *args into sqlite3-compatible params."""
+        if not args:
+            return None
+        if len(args) == 1 and isinstance(args[0], (tuple, list, dict)):
+            return args[0]
+        return args
+
+    def exec(self, sql: str, *args, commit: bool = False) -> sqlite3.Cursor:
         """
-        Context manager for explicit transaction (auto-commit/rollback).
-        
-        Examples:
-            >>> with ud.transaction():
-            ...     ud.execute("UPDATE users SET active = 1")
-            ...     ud.execute("DELETE FROM logs WHERE old = 1")
-        """
-        self._in_context = True
-        try:
-            conn = self.open(db_path)
-            yield conn
-            conn.commit()
-        except Exception:
-            if self._conn:
-                self._conn.rollback()
-            raise
-        finally:
-            self.close()
-            self._in_context = False
-    
-    # ========================================================================
-    # Query Execution
-    # ========================================================================
-    
-    def execute(
-        self,
-        sql: str,
-        params: Optional[Params] = None,
-        *,
-        commit: bool = False
-    ) -> sqlite3.Cursor:
-        """
-        Execute SQL statement.
-        
-        Parameters:
-            sql: SQL statement
-            params: Parameters for placeholders (tuple/list/dict)
-            commit: Auto-commit after execution
-        
-        Returns:
-            Cursor object
-        
-        Examples:
-            >>> ud.execute("CREATE TABLE users (name TEXT, age INT)")
-            >>> ud.execute("INSERT INTO users VALUES (?, ?)", ("Alice", 30))
-            >>> ud.execute("UPDATE users SET age = :age WHERE name = :name",
-            ...            {"name": "Alice", "age": 31})
+        Execute DML/DDL statement.
+
+        ud.exec("INSERT INTO t VALUES (?, ?)", 1, "Alice")
+        ud.exec("INSERT INTO t VALUES (?, ?)", (1, "Alice"))
+        ud.exec("UPDATE t SET name=:n WHERE id=:id", {"n": "Bob", "id": 1})
+        ud.exec("DELETE FROM t WHERE id = ?", 1, commit=True)
         """
         if not self.is_open():
-            raise RuntimeError("Database not connected. Use open() or connect() context.")
-        
+            raise RuntimeError("Not connected. Call ud.conn(path) first.")
+        params = self._resolve_params(args)
         if params is None:
             self._cursor.execute(sql)
         else:
             self._cursor.execute(sql, params)
-        
         if commit and self._conn:
             self._conn.commit()
-        
         return self._cursor
-    
-    def execute_many(
-        self,
-        sql: str,
-        params_list: List[Params],
-        *,
-        commit: bool = False
-    ) -> sqlite3.Cursor:
+
+    def fetch(self, sql: str, *args) -> list:
         """
-        Execute SQL with multiple parameter sets.
-        
-        Examples:
-            >>> users = [("Alice", 30), ("Bob", 25), ("Charlie", 35)]
-            >>> ud.execute_many("INSERT INTO users VALUES (?, ?)", users)
+        Execute SELECT and return all rows.
+        Row supports attribute access: row.col
+
+        rows = ud.fetch("SELECT * FROM t WHERE age > ?", 20)
+        for row in rows:
+            print(row.id, row.name)
         """
-        if not self.is_open():
-            raise RuntimeError("Database not connected. Use open() or connect() context.")
-        
-        self._cursor.executemany(sql, params_list)
-        
-        if commit and self._conn:
-            self._conn.commit()
-        
-        return self._cursor
-    
-    def query(
-        self,
-        sql: str,
-        params: Optional[Params] = None,
-        *,
-        one: bool = False
-    ) -> Union[Row, Rows, Dict, List[Dict], None]:
-        """
-        Execute SELECT query and fetch results.
-        
-        Parameters:
-            sql: SELECT statement
-            params: Parameters for placeholders
-            one: Return single row (fetchone) vs all rows (fetchall)
-        
-        Returns:
-            Rows as tuples or dicts (depends on row_factory)
-        
-        Examples:
-            >>> rows = ud.query("SELECT * FROM users WHERE age > ?", (18,))
-            >>> user = ud.query("SELECT * FROM users WHERE id = ?", (1,), one=True)
-        """
-        self.execute(sql, params)
-        return self._cursor.fetchone() if one else self._cursor.fetchall()
-    
-    def script(self, sql_script: str):
-        """
-        Execute SQL script (multiple statements).
-        
-        Examples:
-            >>> ud.script('''
-            ...     CREATE TABLE users (id INT, name TEXT);
-            ...     CREATE TABLE logs (msg TEXT, ts INT);
-            ... ''')
-        """
-        if not self.is_open():
-            raise RuntimeError("Database not connected. Use open() or connect() context.")
-        
-        self._cursor.executescript(sql_script)
-    
-    # ========================================================================
-    # Fetch Methods
-    # ========================================================================
-    
-    def fetchone(self) -> Optional[Union[Row, Dict]]:
-        """Fetch one row from last query."""
-        if not self._cursor:
-            return None
-        return self._cursor.fetchone()
-    
-    def fetchall(self) -> Union[Rows, List[Dict]]:
-        """Fetch all rows from last query."""
-        if not self._cursor:
-            return []
+        self.exec(sql, *args)
         return self._cursor.fetchall()
-    
-    def fetchmany(self, size: int = 1) -> Union[Rows, List[Dict]]:
-        """Fetch specified number of rows."""
-        if not self._cursor:
-            return []
-        return self._cursor.fetchmany(size)
-    
-    # ========================================================================
-    # Transaction Control
-    # ========================================================================
-    
+
+    def one(self, sql: str, *args):
+        """
+        Execute SELECT and return first row or None.
+
+        row = ud.one("SELECT * FROM t WHERE id = ?", 1)
+        if row:
+            print(row.name)
+        """
+        self.exec(sql, *args)
+        return self._cursor.fetchone()
+
+    def many(self, sql: str, params_list: list, *, commit: bool = False) -> sqlite3.Cursor:
+        """
+        Execute DML with multiple parameter sets (batch).
+
+        ud.many("INSERT INTO t VALUES (?, ?)", [(1, "A"), (2, "B")], commit=True)
+        """
+        if not self.is_open():
+            raise RuntimeError("Not connected. Call ud.conn(path) first.")
+        self._cursor.executemany(sql, params_list)
+        if commit and self._conn:
+            self._conn.commit()
+        return self._cursor
+
+    def script(self, sql_script: str):
+        """Execute SQL script (multiple statements separated by semicolons)."""
+        if not self.is_open():
+            raise RuntimeError("Not connected. Call ud.conn(path) first.")
+        self._conn.executescript(sql_script)
+
+    # ── transaction control ────────────────────────────────────────────────
+
     def commit(self):
         """Commit current transaction."""
         if self._conn:
             self._conn.commit()
-    
+
     def rollback(self):
         """Rollback current transaction."""
         if self._conn:
             self._conn.rollback()
-    
-    # ========================================================================
-    # Row Factory
-    # ========================================================================
-    
-    def set_row_factory(self, mode: Optional[str] = None):
-        """
-        Set row factory for query results.
-        
-        Parameters:
-            mode: "dict" for dictionary rows, None for tuples
-        
-        Examples:
-            >>> ud.set_row_factory("dict")
-            >>> rows = ud.query("SELECT * FROM users")
-            >>> print(rows[0]["name"])
-        """
-        if mode == "dict":
-            self._row_factory = sqlite3.Row
-        else:
-            self._row_factory = None
-        
-        # Apply to existing connection
-        if self._conn:
-            self._conn.row_factory = self._row_factory
-    
-    # ========================================================================
-    # Utility Methods
-    # ========================================================================
-    
-    def table_exists(self, table_name: str) -> bool:
-        """Check if table exists."""
-        result = self.query(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-            (table_name,),
-            one=True
-        )
-        return result is not None
-    
-    def tables(self) -> List[str]:
-        """List all tables in database."""
-        rows = self.query(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-        )
-        return [row[0] for row in rows]
-    
-    def columns(self, table_name: str) -> List[str]:
-        """Get column names for a table."""
-        result = self.query(f"PRAGMA table_info({table_name})")
-        return [row[1] for row in result]
-    
-    def count(self, table_name: str) -> int:
-        """Count rows in a table."""
-        result = self.query(f"SELECT COUNT(*) FROM {table_name}", one=True)
-        return result[0] if result else 0
-    
-    def vacuum(self):
-        """Optimize database (reclaim space)."""
-        if self.is_open():
-            self._conn.execute("VACUUM")
-    
-    # ========================================================================
-    # Quick CRUD helpers
-    # ========================================================================
-    
+
+    # ── CRUD helpers ───────────────────────────────────────────────────────
+
     def insert(self, table: str, data: Dict[str, Any], *, commit: bool = True) -> int:
         """
-        Insert row into table.
-        
-        Examples:
-            >>> ud.insert("users", {"name": "Alice", "age": 30})
+        Insert a row. Returns lastrowid.
+
+        ud.insert("users", {"name": "Alice", "age": 30})
         """
-        columns = ", ".join(data.keys())
-        placeholders = ", ".join(["?"] * len(data))
-        sql = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
-        
-        self.execute(sql, tuple(data.values()), commit=commit)
-        return self._cursor.lastrowid if self._cursor else 0
-    
-    def update(
-        self,
-        table: str,
-        data: Dict[str, Any],
-        where: str,
-        params: Optional[Params] = None,
-        *,
-        commit: bool = True
-    ) -> int:
+        cols = ", ".join(data.keys())
+        ph = ", ".join(["?"] * len(data))
+        self.exec(f"INSERT INTO {table} ({cols}) VALUES ({ph})", tuple(data.values()), commit=commit)
+        return self._cursor.lastrowid or 0
+
+    def update(self, table: str, data: Dict[str, Any], where: str,
+               params: Optional[Union[tuple, list]] = None, *, commit: bool = True) -> int:
         """
-        Update rows in table.
-        
-        Examples:
-            >>> ud.update("users", {"age": 31}, "name = ?", ("Alice",))
+        Update rows. Returns rowcount.
+
+        ud.update("users", {"age": 31}, "name = ?", ("Alice",))
         """
         set_clause = ", ".join(f"{k} = ?" for k in data.keys())
         sql = f"UPDATE {table} SET {set_clause} WHERE {where}"
-        
-        all_params = tuple(data.values()) + (params or ())
-        self.execute(sql, all_params, commit=commit)
-        return self._cursor.rowcount if self._cursor else 0
-    
-    def delete(
-        self,
-        table: str,
-        where: str,
-        params: Optional[Params] = None,
-        *,
-        commit: bool = True
-    ) -> int:
+        all_params = tuple(data.values()) + tuple(params or ())
+        self.exec(sql, all_params, commit=commit)
+        return self._cursor.rowcount or 0
+
+    def delete(self, table: str, where: str,
+               params: Optional[Union[tuple, list]] = None, *, commit: bool = True) -> int:
         """
-        Delete rows from table.
-        
-        Examples:
-            >>> ud.delete("users", "age < ?", (18,))
+        Delete rows. Returns rowcount.
+
+        ud.delete("users", "age < ?", (18,))
         """
-        sql = f"DELETE FROM {table} WHERE {where}"
-        self.execute(sql, params, commit=commit)
-        return self._cursor.rowcount if self._cursor else 0
-    
-    def select(
-        self,
-        table: str,
-        columns: str = "*",
-        where: Optional[str] = None,
-        params: Optional[Params] = None,
-        order_by: Optional[str] = None,
-        limit: Optional[int] = None
-    ) -> Union[Rows, List[Dict]]:
+        self.exec(f"DELETE FROM {table} WHERE {where}", params or (), commit=commit)
+        return self._cursor.rowcount or 0
+
+    def select(self, table: str, cols: str = "*", where: Optional[str] = None,
+               params: Optional[Union[tuple, list]] = None, *,
+               order: Optional[str] = None, limit: Optional[int] = None) -> list:
         """
         Select rows from table.
-        
-        Examples:
-            >>> ud.select("users", where="age > ?", params=(18,), order_by="name")
+
+        ud.select("users", where="age > ?", params=(18,), order="name", limit=10)
         """
-        sql = f"SELECT {columns} FROM {table}"
-        
+        sql = f"SELECT {cols} FROM {table}"
         if where:
             sql += f" WHERE {where}"
-        if order_by:
-            sql += f" ORDER BY {order_by}"
+        if order:
+            sql += f" ORDER BY {order}"
         if limit:
             sql += f" LIMIT {limit}"
-        
-        return self.query(sql, params)
+        return self.fetch(sql, *(params or ()))
+
+    # ── utilities ──────────────────────────────────────────────────────────
+
+    def tables(self) -> List[str]:
+        """List all table names in the database."""
+        rows = self.fetch("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+        return [r.name for r in rows]
+
+    def cols(self, table: str) -> List[str]:
+        """List column names for a table."""
+        rows = self.fetch(f"PRAGMA table_info({table})")
+        return [r.name for r in rows]
+
+    def has(self, table: str) -> bool:
+        """Return True if table exists."""
+        r = self.one("SELECT name FROM sqlite_master WHERE type='table' AND name=?", table)
+        return r is not None
+
+    def count(self, table: str) -> int:
+        """Return row count for a table."""
+        r = self.one(f"SELECT COUNT(*) AS n FROM {table}")
+        return r.n if r else 0
+
+    def vacuum(self):
+        """Run VACUUM to reclaim disk space."""
+        if self._conn:
+            self._conn.execute("VACUUM")
 
 
-# ========================================================================
-# Singleton instance
-# ========================================================================
+# ── Singleton instance ─────────────────────────────────────────────────────
 
-# ud: uses sys_const.yaml DB.default_path (or ./usekit.db)
 ud = DBHandler()
 
 __all__ = ["DBHandler", "ud"]

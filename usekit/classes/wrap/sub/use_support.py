@@ -137,7 +137,7 @@ class _LazyDB:
     
     def _create_db(self):
         """Factory that imports and returns DBHandler instance."""
-        from usekit.classes.support.base.init.db.sbi_db import ud
+        from usekit.classes.support.base.init.dbms.sbi_db import ud
         return ud
     
     def __getattr__(self, name):
