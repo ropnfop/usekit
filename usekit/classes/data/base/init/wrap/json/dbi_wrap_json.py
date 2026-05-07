@@ -190,6 +190,10 @@ def write_json_mem(data=None, name=None, **kwargs):
     """Write to in-memory store."""
     return _DataHd.write_mem(data=data, name=name, **kwargs)
 
+def update_json_mem(data=None, name=None, **kwargs):
+    """Update (merge) in in-memory store."""
+    return _DataHd.update_mem(data=data, name=name, **kwargs)
+
 def delete_json_mem(name=None, **kwargs):
     """Delete from in-memory store."""
     return _DataHd.delete_mem(name=name, **kwargs)
@@ -197,6 +201,10 @@ def delete_json_mem(name=None, **kwargs):
 def has_json_mem(name=None, **kwargs):
     """Check existence in in-memory store."""
     return _DataHd.has_mem(name=name, **kwargs)
+
+def list_json_mem(**kwargs):
+    """List all keys in in-memory store."""
+    return _DataHd.list_mem()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Usage Examples

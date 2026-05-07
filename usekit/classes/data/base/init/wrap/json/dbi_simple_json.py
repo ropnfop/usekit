@@ -32,7 +32,8 @@ from usekit.classes.data.base.init.wrap.json.dbi_wrap_json import (
 # EMIT + MEM
 from usekit.classes.data.base.init.wrap.json.dbi_wrap_json import (
     emit_json_mem,
-    read_json_mem, write_json_mem, delete_json_mem, has_json_mem,
+    read_json_mem, write_json_mem, update_json_mem,
+    delete_json_mem, has_json_mem, list_json_mem,
 )
 
 # ===============================================================================
@@ -259,7 +260,7 @@ class JsonSimple:
         return _wrap_read_format(has_json_cache)(name, dir_path, keydata, cus, **kwargs)
 
     # ─────────────────────────────────────
-    # MEM (rjm/wjm/djm/hjm) - in-memory store
+    # MEM (rjm/wjm/ujm/djm/hjm/ljm) - in-memory store
     # ─────────────────────────────────────
     @staticmethod
     def rjm(name=None, **kwargs):
@@ -272,6 +273,11 @@ class JsonSimple:
         return write_json_mem(data=data, name=name, **kwargs)
 
     @staticmethod
+    def ujm(data=None, name=None, **kwargs):
+        """update json mem : merge dict into existing in-memory store entry"""
+        return update_json_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
     def djm(name=None, **kwargs):
         """delete json mem : delete from in-memory store"""
         return delete_json_mem(name=name, **kwargs)
@@ -280,6 +286,11 @@ class JsonSimple:
     def hjm(name=None, **kwargs):
         """has json mem : check existence in in-memory store"""
         return has_json_mem(name=name, **kwargs)
+
+    @staticmethod
+    def ljm(**kwargs):
+        """list json mem : list all keys in in-memory store"""
+        return list_json_mem()
 
     # ─────────────────────────────────────
     # EMIT (ejm) - memory-only serialization

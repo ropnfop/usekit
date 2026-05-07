@@ -15,6 +15,14 @@ def mem_write(name: str, data: Any) -> None:
     _STORE[name] = data
 
 
+def mem_update(name: str, data: Any) -> None:
+    existing = _STORE.get(name)
+    if isinstance(existing, dict) and isinstance(data, dict):
+        existing.update(data)
+    else:
+        _STORE[name] = data
+
+
 def mem_read(name: str, default: Any = None) -> Any:
     return _STORE.get(name, default)
 
@@ -27,7 +35,7 @@ def mem_delete(name: str) -> bool:
     return _STORE.pop(name, _STORE) is not _STORE
 
 
-def mem_keys() -> list[str]:
+def mem_list() -> list[str]:
     return list(_STORE.keys())
 
 
@@ -36,6 +44,6 @@ def mem_clear() -> None:
 
 
 __all__ = [
-    "mem_write", "mem_read", "mem_has",
-    "mem_delete", "mem_keys", "mem_clear",
+    "mem_write", "mem_update", "mem_read", "mem_has",
+    "mem_delete", "mem_list", "mem_clear",
 ]

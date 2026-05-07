@@ -172,6 +172,13 @@ class CsvNaviSimple:
         """list csv cache : supports positional, keyword, and alias (nm, dp, kd, cs)"""
         return _wrap_simple_format(list_csv_cache)(name, dir_path, keydata, cus, **kwargs)
 
+
+    @staticmethod
+    def lcm(**kwargs):
+        """list csv mem : list all keys in in-memory store"""
+        from usekit.classes.data.base.load.ops.dbl_mem_store import mem_list
+        return mem_list()
+
     # ------------------------------------------------------------------
     # GET (gc*)
     # ------------------------------------------------------------------

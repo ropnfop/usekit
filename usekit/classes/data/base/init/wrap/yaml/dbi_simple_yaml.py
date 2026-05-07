@@ -29,8 +29,12 @@ from usekit.classes.data.base.init.wrap.yaml.dbi_wrap_yaml import (
     has_yaml_base, has_yaml_sub, has_yaml_dir, has_yaml_now,
     has_yaml_tmp, has_yaml_pre, has_yaml_cache,
 )
-# EMIT
-from usekit.classes.data.base.init.wrap.yaml.dbi_wrap_yaml import emit_yaml_mem
+# EMIT + MEM
+from usekit.classes.data.base.init.wrap.yaml.dbi_wrap_yaml import (
+    emit_yaml_mem,
+    read_yaml_mem, write_yaml_mem, update_yaml_mem,
+    delete_yaml_mem, has_yaml_mem, list_yaml_mem,
+)
 
 # ===============================================================================
 # YamlSimple class - Ultra-short interface with alias support
@@ -255,7 +259,38 @@ class YamlSimple:
         """has yaml cache : supports positional, keyword, and alias (nm, dp, kd)"""
         return _wrap_read_format(has_yaml_cache)(name, dir_path, keydata, cus, **kwargs)
 
-# Singleton-style export
+    # ─────────────────────────────────────
+    # MEM (rym/wym/uym/dym/hym/lym) - in-memory store
+    # ─────────────────────────────────────
+    @staticmethod
+    def rym(name=None, **kwargs):
+        """read yaml mem : read from in-memory store"""
+        return read_yaml_mem(name=name, **kwargs)
+
+    @staticmethod
+    def wym(data=None, name=None, **kwargs):
+        """write yaml mem : write to in-memory store"""
+        return write_yaml_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def uym(data=None, name=None, **kwargs):
+        """update yaml mem : merge dict into existing in-memory store entry"""
+        return update_yaml_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def dym(name=None, **kwargs):
+        """delete yaml mem : delete from in-memory store"""
+        return delete_yaml_mem(name=name, **kwargs)
+
+    @staticmethod
+    def hym(name=None, **kwargs):
+        """has yaml mem : check existence in in-memory store"""
+        return has_yaml_mem(name=name, **kwargs)
+
+    @staticmethod
+    def lym(**kwargs):
+        """list yaml mem : list all keys in in-memory store"""
+        return list_yaml_mem()
 
     # ─────────────────────────────────────
     # EMIT (eym) - memory-only serialization

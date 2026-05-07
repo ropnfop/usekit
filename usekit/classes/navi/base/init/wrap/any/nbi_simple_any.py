@@ -172,6 +172,12 @@ class AnyNaviSimple:
         """list any cache : supports positional, keyword, and alias (nm, dp, kd, cs)"""
         return _wrap_simple_format(list_any_cache)(name, mod, dir_path, keydata, cus, **kwargs)
 
+    @staticmethod
+    def lam(**kwargs):
+        """list any mem : list all keys in in-memory store"""
+        from usekit.classes.data.base.load.ops.dbl_mem_store import mem_list
+        return mem_list()
+
     # ------------------------------------------------------------------
     # GET (ga*)
     # ------------------------------------------------------------------

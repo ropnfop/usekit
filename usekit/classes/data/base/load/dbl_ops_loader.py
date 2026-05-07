@@ -284,6 +284,7 @@ class DataLd:
     update_tmp   = partialmethod(update, loc="tmp")
     update_pre   = partialmethod(update, loc="cus")
     update_cache = partialmethod(update, loc="cache")
+    update_mem   = partialmethod(update, loc="mem")
 
     # DELETE aliases
     delete_base  = partialmethod(delete, loc="base")
@@ -304,6 +305,16 @@ class DataLd:
     has_pre   = partialmethod(has, loc="cus")
     has_cache = partialmethod(has, loc="cache")
     has_mem   = partialmethod(has, loc="mem")
+
+    def list_mem(self) -> list:
+        """List all keys currently in the in-memory store."""
+        from usekit.classes.data.base.load.ops.dbl_mem_store import mem_list
+        return mem_list()
+
+    def clear_mem(self) -> None:
+        """Clear all entries from the in-memory store."""
+        from usekit.classes.data.base.load.ops.dbl_mem_store import mem_clear
+        mem_clear()
 
     def __repr__(self) -> str:
         """String representation of DataLd instance."""
