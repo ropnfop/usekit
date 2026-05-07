@@ -272,8 +272,10 @@ result = u.xpb("calc:add", 3, 7)  # → 10
 ### 작성 후 즉시 실행 패턴
 
 `u.wpb()`로 소스를 작성하고 `u.xpb()`로 바로 실행 — 코드 생성과 실행을 한 흐름으로 처리.
+**AI 코딩 워크플로우의 핵심 패턴**: AI가 코드를 작성하고 결과 확인까지 한 번에 수행.
 
 ```python
+# 1. 소스 작성 (src/base/test.py 로 저장됨)
 u.wpb(r'''
 def main():
     print("동적 스크립트")
@@ -283,9 +285,13 @@ if __name__ == "__main__":
     main()
 ''', "test")
 
-u.xpb("test")           # 스크립트 실행 (src/base/test.py 저장됨)
-u.xpb("test:main")      # 함수 호출 → 42
+# 2. 즉시 실행
+u.xpb("test")           # 스크립트 모드 — __main__ 블록 실행
+u.xpb("test:main")      # 함수 모드 — 반환값 42
 ```
+
+> AI는 `u.wpb()`로 코드를 작성하고 `u.xpb()`로 즉시 실행 및 검증한다.
+> 파일로 저장되므로 이후 `u.xpb()` / `u.ipb()`로 재사용 가능.
 
 ---
 
