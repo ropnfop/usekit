@@ -19,24 +19,21 @@ ud.conn(DB)
 uw.ok(f"연결 완료 → {DB}")
 uw.p(f"  is_open: {ud.is_open()}")
 
-# ── 2. DDL — 테이블 생성 ─────────────────────────
-uw.p("\n[2] 테이블 생성 (DDL)")
-ud.exec("""
+# ── 2. DDL — 테이블 생성 (script) ───────────────
+uw.p("\n[2] 테이블 생성 (script)")
+ud.script("""
     CREATE TABLE IF NOT EXISTS users (
         id   INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT    NOT NULL,
         age  INTEGER
-    )
-""")
-ud.exec("""
+    );
     CREATE TABLE IF NOT EXISTS orders (
         id      INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         item    TEXT,
         price   REAL
-    )
+    );
 """)
-ud.commit()
 uw.ok("users / orders 테이블 생성")
 uw.p(f"  tables: {ud.tables()}")
 
