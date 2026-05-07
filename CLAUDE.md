@@ -105,6 +105,8 @@ u.[ACTION][FORMAT][LOCATION]()
 | `u.pjb()` | path json base (디렉토리 경로) | `u.pjb()` |
 | `u.fjb()` | find json base (PosixPath 리스트) | `u.fjb("user_*")` |
 | `u.ljb()` | list json base (파일명 문자열 리스트) | `u.ljb()` |
+| `u.sjb()` | set — 경로/값 저장 (data 첫번째) | `u.sjb("data/dev", "env_path")` |
+| `u.gjb()` | get — 저장된 경로/값 조회 | `u.gjb("env_path")` |
 
 ### Positional Args
 
@@ -123,7 +125,6 @@ data=           # 쓸 데이터 (w/u 필수)
 name=           # 파일명 (확장자 자동추가, 미지정=dumps)
 keydata=        # 중첩 경로 — r/u 에서 사용, "user/email", "items[0]/name"
                 # u.rjb("name", keydata="user/email")  ← 정확한 패턴
-                # u.gjb() 는 keydata 데이터 접근 안 됨 (경로 메타용)
 walk=True       # 하위 디렉토리 재귀 검색
 default=        # keydata 없을 때 기본값
 append=True     # 기존 파일에 추가
@@ -131,6 +132,26 @@ append_mode=    # "jsonl" | "array" | "object" | (미지정=자동감지)
 jsonl=True      # JSONL 형식으로 읽기
 dir_path=       # loc 기준 서브 경로 추가
 ```
+
+### NAVI get / set — 동적 경로 & 캐시
+
+`g`/`s`의 주 역할은 **경로 동적 변경**과 **캐시성 값 저장**:
+
+```python
+# 경로 저장 → 동적 전환
+u.sjb("data/prod", "env_path")
+u.sjb("data/dev",  "env_path")   # 덮어쓰기
+env = u.gjb("env_path")          # → "data/dev"
+
+# 꺼낸 경로를 dir_path로 활용
+u.rjb("config", dir_path=env)
+
+# 캐시성 데이터
+u.sjb("session_abc123", "current_session")
+u.gjb("current_session")         # → "session_abc123"
+```
+
+> `keydata` 데이터 접근은 `u.rjb("name", keydata="user/email")` 사용
 
 ### dir_path — 서브 경로 지정
 
