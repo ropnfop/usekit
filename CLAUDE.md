@@ -269,6 +269,58 @@ result = u.xpb("calc:add", 3, 7)  # → 10
 | `u.xpb("mod")` | `if __name__ == "__main__"` 블록 | 없음 |
 | `u.xpb("mod:func", *args)` | 지정 함수 | 함수 반환값 |
 
+### base / sub 분리 구조
+
+`base`는 진입점, `sub`는 기능 모듈 — `use.imp.pyp.sub()`으로 연결.
+
+```
+src/base/
+  score_app.py          ← 진입점: u.xpb("score_app")
+
+src/sub/
+  score_parts/
+    db.py               ← SQL 처리
+    report.py           ← JSON 처리
+```
+
+```python
+# score_app.py (base)
+from usekit import use, uw
+
+def main():
+    use.imp.pyp.sub("score_parts.db : reset, insert, fetch_all")
+    use.imp.pyp.sub("score_parts.report : save, load")
+
+    reset()
+    insert("Alice", 95)
+    rows = fetch_all()
+    save(rows)
+
+if __name__ == "__main__":
+    main()
+```
+
+```python
+# 실행 (REPL or 스크립트)
+u.xpb("score_app")
+```
+
+### 출력 보관 패턴
+
+실행 결과를 JSON / TXT 로 별도 저장:
+
+```python
+from usekit import u, uw, ut
+
+# JSON으로 결과 보관 (JSONL 누적)
+u.wjb({"ts": ut.str(), "result": result}, "output_log", append=True, append_mode="jsonl")
+
+# TXT로 로그 누적
+u.wtb(f"[{ut.str()}] {message}", "run_log", append=True)
+```
+
+> `uw.history()`는 `uw.p()`로 출력한 것만 기록함. `uw.ok()` / `uw.info()` 등은 포함 안 됨.
+
 ### 작성 후 즉시 실행 패턴
 
 `u.wpb()`로 소스를 작성하고 `u.xpb()`로 바로 실행 — 코드 생성과 실행을 한 흐름으로 처리.
