@@ -53,6 +53,9 @@ result = u.xpb("demo:report", "Bob", grade="B")  # kwargs 지원
 calc = u.ipb("calc")    # → <module>
 calc.add(3, 4)          # → 7
 
+# wpb — 소스 작성 → src/base/{name}.py 로 저장
+u.wpb("def add(a,b): return a+b", "calc")        # src/base/calc.py 생성
+
 # imp.pyp.sub — sub 모듈 함수를 현재 네임스페이스로 주입
 use.imp.pyp.sub("utils : upper, repeat")
 use.imp.pyp.sub("score_parts.db : reset, insert, fetch_all")

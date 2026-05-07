@@ -42,6 +42,43 @@ REPL / 스크립트 → `u.*`
 
 ---
 
+## Help System
+
+```python
+use.help("overview")    # MOSA 아키텍처 개요
+use.help("quick")       # 퀵스타트 가이드
+use.help("action")      # 액션 목록
+use.help("object")      # 포맷 목록
+use.help("location")    # 위치 목록
+use.help("examples")    # 사용 예제
+use.help("keydata")     # 중첩 경로 접근
+use.help("walk")        # 재귀 검색
+use.help("alias")       # 파라미터 별칭
+use.help("pattern")     # 패턴 매칭
+
+help(u.rjb)             # 개별 메서드 도움말
+```
+
+---
+
+## 파라미터 정의서
+
+전체 파라미터는 `usekit/infra/` 에 3레이어로 정의:
+
+| 파일 | 대상 | 역할 |
+|------|------|------|
+| `infra/io_signature.py` | DATA / NAVI | I/O 파라미터 정의 |
+| `infra/exec_signature.py` | EXEC | 실행 파라미터 정의 |
+| `infra/io_signature_doc.py` | 공통 | 파라미터 문서 + 예제 |
+
+```
+USER LAYER      — 의도 표현: data, name, dir_path, keydata, loc, cus
+TARGETING LAYER — 대상 선택: walk, append, append_mode, regex 등
+SYSTEM LAYER    — 실행 제어: fmt, mode, encoding, debug 등
+```
+
+---
+
 ## Directory Convention
 
 ```
