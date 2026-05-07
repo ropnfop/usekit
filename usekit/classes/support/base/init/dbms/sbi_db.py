@@ -46,6 +46,8 @@ class DBHandler:
 
     def conn(self, path: Union[str, Path]) -> "DBHandler":
         """Open database connection. Returns self for chaining."""
+        if self._conn:
+            self.close()
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(p))
