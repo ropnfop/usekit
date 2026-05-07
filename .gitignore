@@ -38,6 +38,7 @@ usekit/docs/
 backup/
 tmp/
 .runtime_cache/
+mytest/
 
 # Local databases
 *.db

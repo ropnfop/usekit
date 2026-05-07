@@ -124,6 +124,23 @@ default=        # keydata 없을 때 기본값
 append=True     # 기존 파일에 추가
 append_mode=    # "jsonl" | "array" | "object" | (미지정=자동감지)
 jsonl=True      # JSONL 형식으로 읽기
+dir_path=       # loc 기준 서브 경로 추가
+```
+
+### dir_path — 서브 경로 지정
+
+두 번째 positional 인자로 loc 기준 하위 경로를 자유롭게 지정:
+
+```python
+# data/json/base/mytest/abc/test.json
+u.wjb({"k": "v"}, "test", "mytest/abc")
+u.rjb("test", "mytest/abc")
+
+# full-chain도 동일
+use.read.json.base("test", "mytest/abc")
+
+# /로 시작하면 절대 경로
+u.rjb("test", "/external/path")
 ```
 
 ### JSON Append 패턴
