@@ -183,17 +183,54 @@ for row in rows:
 
 ## Location-Based Import (EXEC layer)
 
+USEKIT의 핵심 추상화 — `sys.path` 조작 없이 **위치(loc) 기준으로 모듈을 동적 탐색**.
+
+```
+u.[ACTION]pb("[dotted.path]:[func]", *args)
+              ↑                ↑
+         src/base/ 기준     실행할 함수명
+         점(.)은 디렉토리 구분자
+```
+
+### 일반 Python vs USEKIT
+
 ```python
-# base의 모듈 실행
-use.exec.pyp.base("examples.ledger_app.main")
+# 일반 Python
+import sys
+sys.path.append("/some/path/src/base")
+from a.b.c import func
+func(1, 2)
 
-# sub에서 함수 import (sys.path 조작 불필요)
+# USEKIT
+u.xpb("a.b.c:func", 1, 2)   # 실행 → 결과 반환
+u.ipb("a.b.c")               # import → 모듈 객체 반환
+```
+
+### 경로 규칙
+
+```
+src/base/
+  calc.py              → "calc:func"
+  test/
+    test.py            → "test.test:func"
+    utils/
+      math.py          → "test.utils.math:func"
+```
+
+### API
+
+```python
+# xpb — 함수 실행, 결과 반환
+result = u.xpb("calc:add", 10, 20)          # → 30
+result = u.xpb("test.test:add", 10, 20)     # → 30  (중첩 경로)
+
+# ipb — 모듈 객체 반환
+calc = u.ipb("calc")                         # → <module>
+calc.add(3, 4)                               # → 7
+
+# imp.pyp.sub — sub 모듈에서 함수를 현재 네임스페이스로 주입
+use.imp.pyp.sub("utils : upper, repeat")     # upper(), repeat() 직접 사용 가능
 use.imp.pyp.sub("ledger_parts.data : get_records, get_budgets")
-use.imp.pyp.sub("ledger_parts.db : reset_tables, insert_records")
-
-# 실행 with args
-use.exec.pyp.base("examples.pyp_args_demo:add", 10, 20)
-use.exec.pyp.base("mod:func", arg1, key=val)
 ```
 
 ---
