@@ -73,25 +73,6 @@ u.[ACTION][FORMAT][LOCATION]()
 
 ---
 
-## 자주 쓰는 패턴
-
-| 패턴 | 의미 |
-|------|------|
-| `u.rjb("name")` | read json base |
-| `u.wjb(data, "name")` | write json base |
-| `u.hjb("name")` | has json base |
-| `u.ljb()` | list json base |
-| `u.wtb(text, "name")` | write txt base |
-| `u.wmb(md, "name")` | write md base |
-| `u.xsb("SELECT ...")` | exec sql → rows |
-| `u.xdb("CREATE TABLE ...")` | exec ddl |
-| `u.xpb("mod:func", *args)` | exec python |
-| `u.ejm(data)` | emit → str |
-| `u.sjb(val, "key")` | set (캐시/경로 저장) |
-| `u.gjb("key")` | get (캐시/경로 조회) |
-
----
-
 ## Key Parameters
 
 ```python
