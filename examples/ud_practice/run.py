@@ -2,9 +2,12 @@
 ud 실습 — SQLite3 직접 제어
 단계별로 모든 주요 API를 순서대로 사용합니다.
 """
+import os
 from usekit import ud, uw
 
 DB = "/tmp/ud_practice.db"
+if os.path.exists(DB):
+    os.remove(DB)
 
 uw.p("=" * 48)
 uw.p("  ud 실습 시작")
