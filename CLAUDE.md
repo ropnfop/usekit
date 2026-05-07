@@ -15,6 +15,7 @@ docs/base/manual/
     02_routing.md     — 3-letter 라우팅 (ACTION / FORMAT / LOCATION)
     03_io.md          — 데이터 I/O 패턴 (params, keydata, append, dir_path)
     04_exec.md        — EXEC 레이어 (xpb, ipb, wpb, SQL)
+    05_navi.md        — NAVI 레이어 (path, find, list, get, set)
   support/
     uw.md             — Watch/Output (p, ok, warn, err, history)
     ut.md             — Time (now, str, stamp, sleep)
