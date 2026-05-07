@@ -356,7 +356,7 @@ u.wmb(md, "report")
 - `u.wtb()` → `data/common/txt/`
 - `u.wmb()` → `docs/base/`
 
-> `uw.history()`는 `uw.p()`로 출력한 것만 기록함. `uw.ok()` / `uw.info()` 등은 포함 안 됨.
+> `uw.history()`는 `uw.p()`, `uw.ok()`, `uw.info()`, `uw.warn()`, `uw.err()` 모두 기록함.
 
 ### 작성 후 즉시 실행 패턴
 

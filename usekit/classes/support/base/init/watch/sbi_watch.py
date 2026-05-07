@@ -293,7 +293,10 @@ class WatchHandler:
     def _log(self, level: str, msg: str, symbol: str = "", color: str = ""):
         """Internal logging with color and symbol"""
         prefix = f"[{self._now()}] {symbol} [{level}]"
-        print(f"{color}{prefix} {msg}\033[0m")
+        full_msg = f"{prefix} {msg}"
+        self._count += 1
+        self._history.append(full_msg)
+        print(f"{color}{full_msg}\033[0m")
 
 
 # ========================================================================
