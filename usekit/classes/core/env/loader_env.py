@@ -159,17 +159,17 @@ def detect_project_root() -> Path:
         if path.exists():
             _project_root_cache = path
             return path
-    
-    # Strategy 2: For pip installs, return base directory (not usekit subdirectory)
-    if is_pip_env():
-        if is_termux():
-            base_dir = Path("/storage/emulated/0/projects/pj01")
-        else:
-            base_dir = Path.home() / "projects" / "pj01"
-        
-        _project_root_cache = base_dir
-        return base_dir
-    
+
+    # Strategy 2: Workspace exists check (pip OR dev — installation mode irrelevant)
+    if is_termux():
+        workspace = Path("/storage/emulated/0/projects/pj01")
+    else:
+        workspace = Path.home() / "projects" / "pj01"
+
+    if workspace.exists():
+        _project_root_cache = workspace
+        return workspace
+
     # Strategy 3: Development mode - Find usekit directory, go up one level
     # This file is at: usekit/classes/core/env/loader_env.py
     # We need to find 'usekit' directory, then its parent is BASE_PATH
