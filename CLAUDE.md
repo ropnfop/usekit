@@ -120,7 +120,8 @@ uw.clear()
 ut.now() / ut.str() / ut.stamp() / ut.sleep(s) / ut.sleep_ms(ms)
 
 # ud (SQLite3 직접 제어)
-ud.conn("path/to/db")
+ud.conn()               # conn() 생략 또는 인자 없이 → base.db 자동
+ud.conn("path/to/db")  # 상대경로 → ENV_BASE_PATH 기준 절대경로로 자동 변환
 ud.exec("SQL", *params, commit=False)
 ud.fetch("SELECT ...") / ud.one("SELECT ...")   # row.col 속성 접근
 ud.commit() / ud.rollback()
