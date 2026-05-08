@@ -49,6 +49,9 @@ class DBHandler:
         if self._conn:
             self.close()
         p = Path(path)
+        if not p.is_absolute():
+            from usekit.classes.core.env.loader_env import get_base_path as get_project_root
+            p = get_project_root() / p
         p.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(p))
         self._conn.row_factory = _row_factory
