@@ -44,11 +44,13 @@ class DBHandler:
 
     # ── connection ─────────────────────────────────────────────────────────
 
-    def conn(self, path: Union[str, Path]) -> "DBHandler":
-        """Open database connection. Returns self for chaining."""
+    _DEFAULT_DB = "data/table/db/base.db"
+
+    def conn(self, path: Union[str, Path, None] = None) -> "DBHandler":
+        """Open database connection. Defaults to base.db if path omitted."""
         if self._conn:
             self.close()
-        p = Path(path)
+        p = Path(path or self._DEFAULT_DB)
         if not p.is_absolute():
             from usekit.classes.core.env.loader_env import get_base_path as get_project_root
             p = get_project_root() / p
@@ -57,6 +59,11 @@ class DBHandler:
         self._conn.row_factory = _row_factory
         self._cursor = self._conn.cursor()
         return self
+
+    def _ensure_conn(self) -> None:
+        """Auto-connect to default DB if no connection open."""
+        if not self.is_open():
+            self.conn()
 
     def close(self):
         """Close database connection."""
@@ -117,8 +124,7 @@ class DBHandler:
         ud.exec("UPDATE t SET name=:n WHERE id=:id", {"n": "Bob", "id": 1})
         ud.exec("DELETE FROM t WHERE id = ?", 1, commit=True)
         """
-        if not self.is_open():
-            raise RuntimeError("Not connected. Call ud.conn(path) first.")
+        self._ensure_conn()
         params = self._resolve_params(args)
         if params is None:
             self._cursor.execute(sql)
@@ -157,8 +163,7 @@ class DBHandler:
 
         ud.many("INSERT INTO t VALUES (?, ?)", [(1, "A"), (2, "B")], commit=True)
         """
-        if not self.is_open():
-            raise RuntimeError("Not connected. Call ud.conn(path) first.")
+        self._ensure_conn()
         self._cursor.executemany(sql, params_list)
         if commit and self._conn:
             self._conn.commit()
@@ -166,8 +171,7 @@ class DBHandler:
 
     def script(self, sql_script: str):
         """Execute SQL script (multiple statements separated by semicolons)."""
-        if not self.is_open():
-            raise RuntimeError("Not connected. Call ud.conn(path) first.")
+        self._ensure_conn()
         self._conn.executescript(sql_script)
 
     # ── transaction control ────────────────────────────────────────────────
