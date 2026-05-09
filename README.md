@@ -398,6 +398,8 @@ usekit is AI-collaborated, but human-directed. Like architecture, building softw
 
 The philosophy behind usekit — MOSA — came from hundreds of thousands of real tests and continuous refinement on a real mobile device. AI helped with implementation, but the direction, structure, mobile workflow, testing, and decisions came from real use.
 
+The PyPI release history starts from June 2025 — over 26 releases before this repository was published on GitHub.
+
 It was designed, tested, packaged, and shipped from a phone.
 
 That is not a limitation. That is the demo.
