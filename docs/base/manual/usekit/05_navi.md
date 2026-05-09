@@ -1,83 +1,83 @@
 # NAVI Layer
 
-NAVI는 ACTION의 한 분류 — **파일 탐색 + 경로/값 저장** 전용.
+NAVI is an ACTION category — dedicated to **file search + path/value storage**.
 
-| 코드 | 이름 | 역할 |
+| Code | Name | Role |
 |------|------|------|
-| `p` | path | 디렉토리 경로 반환 |
-| `f` | find | 파일 탐색 → PosixPath 리스트 |
-| `l` | list | 파일 목록 → 파일명 문자열 리스트 |
-| `g` | get | 저장된 경로/값 조회 |
-| `s` | set | 경로/값 저장 |
+| `p` | path | return directory path |
+| `f` | find | search files → PosixPath list |
+| `l` | list | file listing → filename string list |
+| `g` | get | retrieve stored path/value |
+| `s` | set | store path/value |
 
 ---
 
-## p — path (디렉토리 경로)
+## p — path (directory path)
 
 ```python
-u.pjb()                        # data/json/base/ 의 절대경로
-u.pjb(dir_path="sub/dir")     # data/json/base/sub/dir/ 의 절대경로
-u.ptb()                        # data/tmp/ 의 절대경로
+u.pjb()                        # absolute path of data/json/base/
+u.pjb(dir_path="sub/dir")     # absolute path of data/json/base/sub/dir/
+u.ptb()                        # absolute path of data/tmp/
 ```
 
-> 반환값: `PosixPath` — `str()` 변환 또는 `/` 연산 가능  
-> 첫 번째 positional 인자는 `name=` 으로 해석됨. 서브 경로는 반드시 `dir_path=` 키워드로 지정.
+> Returns: `PosixPath` — can be converted with `str()` or used with `/` operator  
+> First positional argument is interpreted as `name=`. Sub path must be specified with the `dir_path=` keyword.
 
 ---
 
-## f — find (패턴 탐색)
+## f — find (pattern search)
 
-패턴 인자 필수 — 없으면 `ValueError`.
+Pattern argument required — raises `ValueError` if omitted.
 
 ```python
-u.fjb("user_*")                      # data/json/base/ 에서 user_*.json 매칭
-u.fjb("log_*", walk=True)            # 하위 디렉토리 포함 재귀 탐색
-u.fjb("report_*", dir_path="2026")   # 서브 경로 지정
+u.fjb("user_*")                      # match user_*.json in data/json/base/
+u.fjb("log_*", walk=True)            # recursive search including subdirectories
+u.fjb("report_*", dir_path="2026")   # specify sub path
 ```
 
-> 반환값: `List[PosixPath]`
+> Returns: `List[PosixPath]`
 
 ---
 
-## l — list (파일 목록)
+## l — list (file listing)
 
 ```python
-u.ljb()                        # data/json/base/ 의 파일·디렉토리 목록
-u.ljb(dir_path="sub/dir")     # 서브 경로 지정
+u.ljb()                        # files and directories in data/json/base/
+u.ljb(dir_path="sub/dir")     # specify sub path
 ```
 
-> 반환값: `List[str]` — 파일명 문자열 (디렉토리는 `"sub/"` 형태로 포함됨)  
-> 서브 경로는 `dir_path=` 키워드로 지정.
+> Returns: `List[str]` — filenames as strings (directories included as `"sub/"`)  
+> Sub path must be specified with the `dir_path=` keyword.
 
 ---
 
-## g / s — get / set (경로·값 캐시)
+## g / s — get / set (path/value cache)
 
-`s`(set) 로 저장, `g`(get) 으로 조회. 주 용도는 **동적 경로 전환**과 **캐시성 값 보관**.
+Store with `s`(set), retrieve with `g`(get). Primary use: **dynamic path switching** and **cached value storage**.
 
 ```python
-# 경로 저장 → 동적 전환
+# store path → dynamic switching
 u.sjb("data/prod", "env_path")
-u.sjb("data/dev",  "env_path")    # 덮어쓰기
+u.sjb("data/dev",  "env_path")    # overwrite
 env = u.gjb("env_path")           # → "data/dev"
 
-# 꺼낸 경로를 dir_path로 활용
+# use retrieved path as dir_path
 u.rjb("config", dir_path=env)
 
-# 캐시성 값 보관
+# cache-style value storage
 u.sjb("session_abc123", "current_session")
 u.gjb("current_session")          # → "session_abc123"
 ```
 
-> `keydata` 를 이용한 데이터 접근은 `u.rjb("name", keydata="user/email")` — NAVI가 아닌 DATA 액션.
+> Nested data access via `keydata` (`u.rjb("name", keydata="user/email")`) is a DATA action, not NAVI.
 
 ---
 
-## f vs l 비교
+## f vs l Comparison
 
 | | `u.fjb()` | `u.ljb()` |
 |---|---|---|
-| 반환값 | `List[PosixPath]` | `List[str]` |
-| 패턴 지정 | `u.fjb("user_*")` | 없음 |
-| 재귀 | `walk=True` 지원 | — |
-| 용도 | 파일 경로가 필요할 때 | 파일 이름 목록만 필요할 때 |
+| Returns | `List[PosixPath]` | `List[str]` |
+| Pattern | `u.fjb("user_*")` | none |
+| Recursive | `walk=True` supported | — |
+| Use case | when you need file paths | when you only need filenames |

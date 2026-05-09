@@ -1,7 +1,7 @@
 # USEKIT Overview
 
 USEKIT — Memory-Oriented Software Architecture (MOSA).
-`use` / `u` 가 정규화된 문법 기준이며 나머지는 모두 지원 도구다.
+`use` / `u` are the canonical API interface; everything else is a support tool.
 
 ---
 
@@ -10,7 +10,7 @@ USEKIT — Memory-Oriented Software Architecture (MOSA).
 ```python
 from usekit import u     # 3-letter shorthand (REPL, scripts)
 from usekit import use   # full-chain (readable code)
-from usekit import s     # safe mode — 실패 시 None 반환
+from usekit import s     # safe mode — returns None on failure
 
 from usekit import uw    # watch/output
 from usekit import ut    # time
@@ -21,60 +21,60 @@ from usekit import ud    # database (SQLite3)
 
 ## Core Rules
 
-1. **Use USEKIT APIs first.** `open()`, `os.path`, `pathlib` 직접 사용 금지.
-2. **No hardcoded absolute paths.** 모든 경로는 `ENV_BASE_PATH` 기준 상대경로.
-3. **No `sys.path.append`.** `u.ipb("module")` 또는 `u.xpb("mod:func")` 사용.
+1. **Use USEKIT APIs first.** Do not use `open()`, `os.path`, or `pathlib` directly.
+2. **No hardcoded absolute paths.** All paths are relative to `ENV_BASE_PATH`.
+3. **No `sys.path.append`.** Use `u.ipb("module")` or `u.xpb("mod:func")`.
 4. **Do not rewrite project structure** unless explicitly requested.
 
 ---
 
-## 두 가지 스타일
+## Two Styles
 
-같은 동작, 두 가지 표현:
+Same operation, two expressions:
 
 ```python
 u.rjb("config")                   # 3-letter shorthand
-use.read.json.base("config")       # full-chain (동일)
+use.read.json.base("config")       # full-chain (identical)
 ```
 
-REPL / 스크립트 → `u.*`  
-가독성이 중요한 코드 → `use.*`
+REPL / scripts → `u.*`  
+Readable code → `use.*`
 
 ---
 
 ## Help System
 
 ```python
-use.help("overview")    # MOSA 아키텍처 개요
-use.help("quick")       # 퀵스타트 가이드
-use.help("action")      # 액션 목록
-use.help("object")      # 포맷 목록
-use.help("location")    # 위치 목록
-use.help("examples")    # 사용 예제
-use.help("keydata")     # 중첩 경로 접근
-use.help("walk")        # 재귀 검색
-use.help("alias")       # 파라미터 별칭
-use.help("pattern")     # 패턴 매칭
+use.help("overview")    # MOSA architecture overview
+use.help("quick")       # quick start guide
+use.help("action")      # action list
+use.help("object")      # format list
+use.help("location")    # location list
+use.help("examples")    # usage examples
+use.help("keydata")     # nested path access
+use.help("walk")        # recursive search
+use.help("alias")       # parameter aliases
+use.help("pattern")     # pattern matching
 
-help(u.rjb)             # 개별 메서드 도움말
+help(u.rjb)             # individual method help
 ```
 
 ---
 
-## 파라미터 정의서
+## Parameter Reference
 
-전체 파라미터는 `usekit/infra/` 에 3레이어로 정의:
+Parameters are defined in `usekit/infra/` across 3 layers:
 
-| 파일 | 대상 | 역할 |
-|------|------|------|
-| `infra/io_signature.py` | DATA / NAVI | I/O 파라미터 정의 |
-| `infra/exec_signature.py` | EXEC | 실행 파라미터 정의 |
-| `infra/io_signature_doc.py` | 공통 | 파라미터 문서 + 예제 |
+| File | Target | Role |
+|------|--------|------|
+| `infra/io_signature.py` | DATA / NAVI | I/O parameter definitions |
+| `infra/exec_signature.py` | EXEC | execution parameter definitions |
+| `infra/io_signature_doc.py` | common | parameter docs + examples |
 
 ```
-USER LAYER      — 의도 표현: data, name, dir_path, keydata, loc, cus
-TARGETING LAYER — 대상 선택: walk, append, append_mode, regex 등
-SYSTEM LAYER    — 실행 제어: fmt, mode, encoding, debug 등
+USER LAYER      — intent: data, name, dir_path, keydata, loc, cus
+TARGETING LAYER — target selection: walk, append, append_mode, regex etc.
+SYSTEM LAYER    — execution control: fmt, mode, encoding, debug etc.
 ```
 
 ---
