@@ -8,9 +8,6 @@ pkg update -y
 echo "[usekit] Installing Python and pip..."
 pkg install -y python python-pip
 
-echo "[usekit] Upgrading pip..."
-python -m pip install --upgrade pip
-
 echo "[usekit] Installing usekit..."
 pip install --upgrade usekit
 
