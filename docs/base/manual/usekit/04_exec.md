@@ -1,33 +1,33 @@
 # EXEC Layer
 
-`sys.path` 조작 없이 **위치(loc) 기준으로 모듈을 동적 탐색·실행**.
+Dynamically resolves and runs modules **by location (loc) without touching `sys.path`**.
 
 ```
 u.[ACTION]pb("[dotted.path]:[func]", *args)
               ↑                ↑
-         src/base/ 기준     실행할 함수명
-         점(.)은 디렉토리 구분자
+         relative to src/base/     function to call
+         dot (.) is directory separator
 ```
 
 ---
 
-## 일반 Python vs USEKIT
+## Standard Python vs USEKIT
 
 ```python
-# 일반 Python
+# Standard Python
 import sys
 sys.path.append("/some/path/src/base")
 from a.b.c import func
 func(1, 2)
 
 # USEKIT
-u.xpb("a.b.c:func", 1, 2)   # 실행 → 결과 반환
-u.ipb("a.b.c")               # import → 모듈 객체 반환
+u.xpb("a.b.c:func", 1, 2)   # run → return result
+u.ipb("a.b.c")               # import → return module object
 ```
 
 ---
 
-## 경로 규칙
+## Path Rules
 
 ```
 src/base/
@@ -43,51 +43,51 @@ src/base/
 ## API
 
 ```python
-# xpb — 함수 실행, 결과 반환
+# xpb — run function, return result
 result = u.xpb("calc:add", 10, 20)               # → 30
 result = u.xpb("test.test:add", 10, 20)          # → 30
 result = u.xpb("demo:report", "Alice", 95)
-result = u.xpb("demo:report", "Bob", grade="B")  # kwargs 지원
+result = u.xpb("demo:report", "Bob", grade="B")  # kwargs supported
 
-# ipb — 모듈 객체 반환
+# ipb — return module object
 calc = u.ipb("calc")    # → <module>
 calc.add(3, 4)          # → 7
 
-# wpb — 소스 작성 → src/base/{name}.py 로 저장
-u.wpb("def add(a,b): return a+b", "calc")        # src/base/calc.py 생성
+# wpb — write source → saves to src/base/{name}.py
+u.wpb("def add(a,b): return a+b", "calc")        # creates src/base/calc.py
 
-# imp.pyp.sub — sub 모듈 함수를 현재 네임스페이스로 주입
+# imp.pyp.sub — inject sub module functions into current namespace
 use.imp.pyp.sub("utils : upper, repeat")
 use.imp.pyp.sub("score_parts.db : reset, insert, fetch_all")
 ```
 
 ---
 
-## 두 가지 실행 모드
+## Two Execution Modes
 
 ```python
-# 스크립트 모드 — if __name__ == "__main__" 블록 실행, 반환값 없음
+# script mode — runs if __name__ == "__main__" block, no return value
 u.xpb("main")
 
-# 함수 모드 — 지정 함수 실행, 반환값 있음
+# function mode — runs specified function, returns value
 result = u.xpb("main:main")
 result = u.xpb("calc:add", 3, 7)   # → 10
 ```
 
-| 형태 | 실행 대상 | 반환값 |
-|------|-----------|--------|
-| `u.xpb("mod")` | `__main__` 블록 | 없음 |
-| `u.xpb("mod:func", *args)` | 지정 함수 | 함수 반환값 |
+| Form | Target | Return value |
+|------|--------|--------------|
+| `u.xpb("mod")` | `__main__` block | none |
+| `u.xpb("mod:func", *args)` | specified function | function return value |
 
 ---
 
-## base / sub 분리 구조
+## base / sub Split Structure
 
-`base` — 진입점 / `sub` — 기능 모듈
+`base` — entry point / `sub` — feature modules
 
 ```
 src/base/
-  score_app.py       ← 진입점
+  score_app.py       ← entry point
 
 src/sub/
   score_parts/
@@ -112,52 +112,52 @@ if __name__ == "__main__":
 ```
 
 ```python
-# 실행
+# run
 u.xpb("score_app")
 ```
 
 ---
 
-## 작성 후 즉시 실행 패턴
+## Write-then-Run Pattern
 
-AI 코딩 워크플로우의 핵심 — 코드 작성과 실행을 한 흐름으로.
+Core AI coding workflow — write and run in one flow.
 
 ```python
-# 1. 소스 작성 → src/base/test.py 로 저장
+# 1. write source → saves to src/base/test.py
 u.wpb(r'''
 def main():
-    print("동적 스크립트")
+    print("dynamic script")
     return 42
 
 if __name__ == "__main__":
     main()
 ''', "test")
 
-# 2. 즉시 실행
-u.xpb("test")         # 스크립트 모드
-u.xpb("test:main")    # 함수 모드 → 42
+# 2. run immediately
+u.xpb("test")         # script mode
+u.xpb("test:main")    # function mode → 42
 ```
 
 ---
 
-## 출력 보관 패턴
+## Output Storage Pattern
 
-실행 결과를 JSON / TXT / MD 로 저장 — `ut`로 타임스탬프 포함.
+Save execution results to JSON / TXT / MD — with timestamps via `ut`.
 
 ```python
 from usekit import u, ut
 
-# JSON 누적 (JSONL)
+# JSON accumulation (JSONL)
 u.wjb({"ts": ut.str(), "result": result}, "output_log", append=True, append_mode="jsonl")
 
-# TXT 로그 누적
+# TXT log accumulation
 u.wtb(f"[{ut.str()}] {message}", "run_log", append=True)
 
-# MD 리포트
-u.wmb(f"# 리포트\n\n생성: {ut.str()}\n\n...", "report")
+# MD report
+u.wmb(f"# Report\n\nGenerated: {ut.str()}\n\n...", "report")
 ```
 
-저장 위치:
+Storage paths:
 - `u.wjb()` → `data/json/base/`
 - `u.wtb()` → `data/common/txt/`
 - `u.wmb()` → `docs/base/`
@@ -167,15 +167,15 @@ u.wmb(f"# 리포트\n\n생성: {ut.str()}\n\n...", "report")
 ## SQL / DDL
 
 ```python
-# DDL — 테이블 생성
+# DDL — create table
 u.xdb("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)")
 
-# DML/Query — namedtuple 행 반환 (속성 접근)
+# DML/Query — returns namedtuple rows (attribute access)
 rows = u.xsb("SELECT * FROM users WHERE age > 20")
 for row in rows:
     print(row.id, row.name)
-    print(row._fields)    # 컬럼명 리스트
+    print(row._fields)    # column name list
 
-# SQL 파일 실행 (data/table/sql/ 기준)
+# run SQL file (relative to data/table/sql/)
 rows = u.xsb("users_list", id=10)
 ```

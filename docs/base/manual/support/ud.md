@@ -1,7 +1,7 @@
 # ud — Database (SQLite3)
 
-`use` / `u` 와 별개인 **SQLite3 저수준 직접 제어 도구**.  
-연결·실행·페치·종료를 개별적으로 처리한다.
+Low-level direct SQLite3 control, separate from `use` / `u`.  
+Manages connection, execution, fetch, and close individually.
 
 ```python
 from usekit import ud
@@ -9,20 +9,20 @@ from usekit import ud
 
 ---
 
-## 연결 / 종료
+## Connect / Close
 
 ```python
-ud.conn("data/table/db/base.db")   # 연결 (디렉토리 자동 생성)
-                                    # 기존 연결이 있으면 자동 close 후 재연결
-ud.close()                          # 연결 종료
+ud.conn("data/table/db/base.db")   # connect (creates directory if needed)
+                                    # existing connection is auto-closed before reconnect
+ud.close()                          # close connection
 ud.is_open()                        # bool
 ```
 
 ---
 
-## 실행 (exec)
+## Execute
 
-DML / DDL 실행. params는 positional, tuple, dict 모두 지원.
+Runs DML / DDL. Params can be positional, tuple, or dict.
 
 ```python
 ud.exec("CREATE TABLE IF NOT EXISTS t (id INTEGER PRIMARY KEY, name TEXT)")
@@ -31,31 +31,31 @@ ud.exec("INSERT INTO t VALUES (?, ?)", 1, "Alice")           # positional
 ud.exec("INSERT INTO t VALUES (?, ?)", (1, "Alice"))          # tuple
 ud.exec("UPDATE t SET name=:n WHERE id=:id", {"n": "B", "id": 1})  # dict
 
-ud.exec("DELETE FROM t WHERE id = ?", 1, commit=True)        # 즉시 commit
+ud.exec("DELETE FROM t WHERE id = ?", 1, commit=True)        # commit immediately
 ```
 
 ---
 
-## 조회 (fetch / one)
+## Query
 
-rows는 namedtuple — `row.col` 속성 접근.
+Rows are namedtuple — access via `row.col` attribute.
 
 ```python
 rows = ud.fetch("SELECT * FROM t WHERE age > ?", 20)
 for row in rows:
     print(row.id, row.name)
-    print(row._fields)    # 컬럼명 리스트
+    print(row._fields)    # column name list
 
 row = ud.one("SELECT * FROM t WHERE id = ?", 1)
 if row:
     print(row.name)       # None-safe
 
-# 결과 없으면: fetch → [], one → None
+# no results: fetch → [], one → None
 ```
 
 ---
 
-## 배치 / 스크립트
+## Batch / Script
 
 ```python
 ud.many("INSERT INTO t VALUES (?, ?)", [(1, "A"), (2, "B")], commit=True)
@@ -64,25 +64,25 @@ ud.script("CREATE TABLE a (x INT); CREATE TABLE b (y TEXT);")
 
 ---
 
-## 트랜잭션
+## Transaction
 
 ```python
 ud.commit()
 ud.rollback()
 
-# tx context — 성공 시 commit, 예외 시 rollback
-with ud.tx("data/table/db/base.db"):    # path 지정 → 열기 + 닫기 포함
+# tx context — commits on success, rolls back on exception
+with ud.tx("data/table/db/base.db"):    # with path → opens and closes connection
     ud.exec("INSERT INTO t VALUES (?, ?)", 3, "Charlie")
 
 ud.conn("data/table/db/base.db")
-with ud.tx():                            # path 없음 → 기존 연결 재사용
+with ud.tx():                            # no path → reuses existing connection
     ud.exec("UPDATE t SET name = ? WHERE id = ?", "Dave", 1)
 ud.close()
 ```
 
 ---
 
-## CRUD 헬퍼
+## CRUD Helpers
 
 ```python
 ud.insert("t", {"id": 4, "name": "Eve"})                      # → lastrowid
@@ -93,14 +93,14 @@ ud.select("t", where="id > ?", params=(0,), order="name", limit=10)
 
 ---
 
-## 유틸
+## Utilities
 
 ```python
 ud.tables()       # → ["t", "users", ...]
 ud.cols("t")      # → ["id", "name"]
 ud.has("t")       # → True / False
 ud.count("t")     # → 42
-ud.vacuum()       # 디스크 최적화
+ud.vacuum()       # optimize disk usage
 ```
 
 ---
@@ -109,8 +109,8 @@ ud.vacuum()       # 디스크 최적화
 
 | | `ud.*` | `u.xsb()` |
 |---|---|---|
-| 연결 관리 | 수동 (`conn` / `close`) | 자동 |
-| DB 경로 | 직접 지정 | `data/table/db/base.db` 자동 |
-| SQL 입력 | 인라인 raw SQL | 인라인 + 파일(`data/table/sql/`) |
-| 반환 행 | namedtuple (속성 접근) | DotDict (속성 접근) |
-| 용도 | 저수준 직접 제어 | USEKIT 경로체계 통합 |
+| Connection management | manual (`conn` / `close`) | automatic |
+| DB path | specified manually | auto `data/table/db/base.db` |
+| SQL input | inline raw SQL | inline + file (`data/table/sql/`) |
+| Returned rows | namedtuple (attribute access) | DotDict (attribute access) |
+| Use case | low-level direct control | integrated with USEKIT path system |
