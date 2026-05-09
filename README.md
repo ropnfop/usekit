@@ -41,10 +41,8 @@ usekit installs its required core packages automatically.
 Open Termux and run:
 
 ```bash
-pkg install -y wget && wget -qO- https://raw.githubusercontent.com/ropnfop/usekit/main/install.sh | bash
+pkg install -y python python-pip && pip install --upgrade usekit
 ```
-
-This installs Python, pip, and usekit automatically.
 
 ### After Install
 
@@ -57,15 +55,6 @@ u.editor()       # launch the mobile web editor
 ```
 
 When `use.termux()` runs for the first time, Android may ask for storage permission. Allow it, then run `use.check()` again.
-
-### Manual Install (step by step)
-
-```bash
-pkg update -y
-pkg install -y python python-pip
-python -m pip install --upgrade pip
-pip install usekit
-```
 
 ---
 
