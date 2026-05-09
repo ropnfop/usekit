@@ -390,8 +390,14 @@ MIT License
 
 ## Development Note
 
-usekit is a proof that mobile vibe coding can be executable, testable, and practical.
+usekit was built entirely on mobile devices with AI collaboration.
 
-It was designed and tested entirely on mobile devices through AI collaboration, based on real coding experience and real mobile workflow pain points.
+This is intentional.
 
-The PyPI release history goes back to June 2025, while this GitHub repository was published later.
+The goal of usekit is to prove that mobile vibe coding can be executable, testable, and practical. It is not just about generating code from prompts. It is about writing, running, checking, saving, fixing, and improving real Python workflows from a phone.
+
+usekit is published on PyPI and includes a local web editor, SQL support, file helpers, and a compact routing API.
+
+It was designed, tested, packaged, and shipped from a phone.
+
+That is not a limitation. That is the demo.
