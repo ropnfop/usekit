@@ -392,11 +392,11 @@ MIT License
 
 usekit was built entirely on mobile devices with AI collaboration.
 
-This is intentional.
+This was intentional.
 
-The goal of usekit is to prove that mobile vibe coding can be executable, testable, and practical. It is not just about generating code from prompts. It is about writing, running, checking, saving, fixing, and improving real Python workflows from a phone.
+usekit is AI-collaborated, but human-directed. Like architecture, building software is not only about typing every line by hand. The important parts are problem definition, workflow design, architecture, testing, iteration, and judgment.
 
-usekit is published on PyPI and includes a local web editor, SQL support, file helpers, and a compact routing API.
+The philosophy behind usekit — MOSA — came from hundreds of thousands of real tests and continuous refinement on a real mobile device. AI helped with implementation, but the direction, structure, mobile workflow, testing, and decisions came from real use.
 
 It was designed, tested, packaged, and shipped from a phone.
 
