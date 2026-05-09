@@ -41,8 +41,10 @@ usekit installs its required core packages automatically.
 Open Termux and run:
 
 ```bash
-pkg install -y python python-pip && pip install --upgrade usekit
+pkg i -y python-pip && pip install usekit
 ```
+
+Already installed? It skips automatically.
 
 ### After Install
 
