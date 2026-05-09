@@ -36,40 +36,36 @@ usekit installs its required core packages automatically.
 > This guide was tested with the Google Play Store version of Termux.  
 > If `pkg` or Python installation behaves unexpectedly, try the F-Droid or GitHub Releases version of Termux.
 
-### 1. Install Termux
+### One-line Install
 
-Install Termux from the Google Play Store, then open the Termux app.
-
-### 2. Install Python and pip
+Open Termux and run:
 
 ```bash
-pkg update -y
-pkg install python python-pip -y
+pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/ropnfop/usekit/main/install.sh | bash
 ```
 
-### 3. Install usekit
+This installs Python, pip, and usekit automatically.
 
-```bash
-python -m pip install usekit
-```
-
-### 4. Start Python
-
-```bash
-python
-```
-
-### 5. Initialize usekit in Termux
+### After Install
 
 ```python
 from usekit import use, u
 
-use.termux()     # setup Termux storage permission
+use.termux()     # setup storage permission (first time only)
 use.check()      # check environment status
 u.editor()       # launch the mobile web editor
 ```
 
 When `use.termux()` runs for the first time, Android may ask for storage permission. Allow it, then run `use.check()` again.
+
+### Manual Install (step by step)
+
+```bash
+pkg update -y
+pkg install -y python python-pip
+python -m pip install --upgrade pip
+pip install usekit
+```
 
 ---
 
