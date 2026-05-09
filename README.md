@@ -41,7 +41,7 @@ usekit installs its required core packages automatically.
 Open Termux and run:
 
 ```bash
-pkg install -y curl && curl -fsSL https://raw.githubusercontent.com/ropnfop/usekit/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/ropnfop/usekit/main/install.sh | bash
 ```
 
 This installs Python, pip, and usekit automatically.
