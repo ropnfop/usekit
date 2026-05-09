@@ -1,5 +1,9 @@
 # usekit
 
+> Mobile vibe coding, but executable.  
+> Built on mobile, for mobile. Human-directed. AI-collaborated. Android-tested.  
+> Beta-stage, free, open-source.
+
 A lightweight, mobile-first Python toolkit for **Memory-Oriented Software Architecture (MOSA)**.
 
 **Code is not function, but memory.**
