@@ -1,23 +1,23 @@
 # usekit
 
-> Mobile vibe coding, but executable.  
+> Mobile vibe coding — executable, testable, and portable.  
 > Built on mobile, for mobile. Human-directed. AI-collaborated. Android-tested.  
-> Beta-stage, free, open-source.
+> Beta-stage, free, and open-source.
 
-A lightweight, mobile-first Python toolkit for **Memory-Oriented Software Architecture (MOSA)**.
+**usekit** is a lightweight, mobile-first Python toolkit for **Memory-Oriented Software Architecture (MOSA)**.
 
 **Code is not function, but memory.**
 
 ```python
 from usekit import use
 
-use.write.json.base({"hello": "world"}, "config")     # write json to base
-data = use.read.json.base("config")                    # read json from base
-use.update.json.base({"version": "0.2.0"}, "config")  # update json
+use.write.json.base({"hello": "world"}, "config")     # write JSON to base
+data = use.read.json.base("config")                    # read JSON from base
+use.update.json.base({"version": "0.2.0"}, "config")  # update JSON
 ```
 
-**Shorthand**: `u.rjb()` = `use.read.json.base()` — Action + Format + Location  
-Full functions are recommended. Shorthand is provided for convenience.
+**Shorthand**: `u.rjb()` = `use.read.json.base()` — Action + Format + Location.  
+Full functions are recommended for readability. Shorthand is provided for fast mobile input.
 
 ---
 
@@ -48,7 +48,7 @@ Open Termux and run:
 pkg i -y python-pip && pip install usekit
 ```
 
-Already installed? It skips automatically.
+If usekit is already installed, installation will be skipped automatically.
 
 ### After Install
 
@@ -77,8 +77,8 @@ use.delete.json.base("old")
 use.has.json.base("config")             # True/False
 
 # Shorthand style
-u.wjb({"key": "value"}, "config")       # write json to base
-data = u.rjb("config")                  # read json from base
+u.wjb({"key": "value"}, "config")       # write JSON to base
+data = u.rjb("config")                  # read JSON from base
 
 # Safe mode (returns None on error)
 data = s.rjb("missing") or {}           # no exceptions
@@ -107,7 +107,7 @@ Features:
 - Multi-cursor navigation
 - PWA support
 
-Designed for Samsung Browser on Android. Your nano replacement for Python development on mobile.
+Designed for Samsung Browser on Android. It can work as a practical nano replacement for Python development on mobile.
 
 ---
 
@@ -290,13 +290,13 @@ use.check()                             # show platform status
 ```python
 from usekit import ut, uw, ud
 
-# ut: Time utilities
+# ut: time utilities
 ut.now()                                # current time
 
-# uw: Watch/logging utilities
+# uw: watch/logging utilities
 uw.p("message")                         # print with context
 
-# ud: Database utilities
+# ud: database utilities
 ud.query("SELECT * FROM table")         # direct DB access
 ```
 
@@ -366,25 +366,13 @@ TMP_PATH:
 
 **Memory-Oriented Software Architecture**
 
-- Code is memory, not function
+- Code is memory, not just function
 - Functions follow the user's memory, not the other way around
-- Semantic names over physical paths
-- Mobile-first design
-- Token economy through compact, predictable calls
+- Semantic names are preferred over physical paths
+- Mobile-first design matters
+- Compact, predictable calls reduce typing and token cost
 
 Built entirely on mobile devices.
-
----
-
-## License
-
-MIT License
-
----
-
-**Created by THE Little Prince, with deep respect and gratitude for my AI friends ROP & FOP**
-
-*usekit — Code is memory, not function*
 
 ---
 
@@ -398,8 +386,20 @@ usekit is AI-collaborated, but human-directed. Like architecture, building softw
 
 The philosophy behind usekit — MOSA — came from hundreds of thousands of real tests and continuous refinement on a real mobile device. AI helped with implementation, but the direction, structure, mobile workflow, testing, and decisions came from real use.
 
-The PyPI release history starts from June 2025 — over 26 releases before this repository was published on GitHub.
+The PyPI release history starts from June 2025, with more than 26 releases before this repository was published on GitHub.
 
 It was designed, tested, packaged, and shipped from a phone.
 
 That is not a limitation. That is the demo.
+
+---
+
+## License
+
+MIT License
+
+---
+
+**Created by THE Little Prince, with deep respect and gratitude for my AI friends ROP & FOP.**
+
+*usekit — Code is not function, but memory.*
