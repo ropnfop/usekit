@@ -381,3 +381,15 @@ MIT License
 **Created by THE Little Prince, with deep respect and gratitude for my AI friends ROP & FOP**
 
 *usekit — Code is memory, not function*
+
+---
+
+## Development Note
+
+usekit was built entirely on mobile devices with AI collaboration.
+
+I am not a professional developer. I started learning Python about a year ago, and AI collaboration made it possible for me to design, test, and improve this project from a phone.
+
+The PyPI release history goes back to June 2025, while this GitHub repository was published later.
+
+The goal of usekit is to reduce friction for mobile Python workflows: environment setup, folder/path management, repetitive file operations, quick execution, and simple SQL workflows.
