@@ -9,6 +9,46 @@ from usekit import ud
 
 ---
 
+## SQLite Database Policy
+
+usekit follows a simple mobile-first SQLite policy.
+
+For most users, one database file is enough.  
+Instead of creating many database files, usekit encourages organizing data
+with tables inside the built-in database.
+
+**Default layout:**
+
+- `base.db` — main database
+- `sub.db` — optional secondary database for tests, drafts, or separated workflows
+
+**Typical structure:**
+
+```text
+base.db
+ ├─ memo
+ ├─ task_items
+ ├─ settings
+ ├─ ai_sessions
+ ├─ ai_messages
+ └─ feedback_logs
+```
+
+This matches the common SQLite usage pattern:
+
+- one app or workspace = one database
+- features and data types = tables
+
+Keeping database files small in number makes mobile development easier to
+inspect, back up, move, and reuse across Termux, Colab, and file managers.
+
+```text
+base.db  →  main database for production data
+sub.db   →  tests, temporary data, isolated experiments
+```
+
+---
+
 ## Connect / Close
 
 ```python
