@@ -797,6 +797,12 @@ class EditorHandler(SimpleHTTPRequestHandler):
                 timeout = min(int(payload.get("timeout", 10)), 30)
                 inputs  = list(payload.get("inputs", []))
 
+                # AI 명령은 timeout 상한을 120초로 확장
+                _ai_timeout = 120
+                _code_preview = str(payload.get("code", "")).lstrip()
+                if _code_preview.startswith("!uk ai ") or _code_preview.startswith("!usekit ai "):
+                    timeout = min(int(payload.get("timeout", 120)), _ai_timeout)
+
                 # REPL 계열은 persistent ns, exec(File tmp)는 매번 새 ns
                 if mode in ("single", "block_echo", "live", "cli"):
                     if REPL_NS is None:
@@ -849,10 +855,12 @@ class EditorHandler(SimpleHTTPRequestHandler):
                                 import subprocess as _sp
                                 _shell_cmd = code.lstrip()[1:].strip()
                                 if _shell_cmd:
+                                    # AI 명령은 timeout 확장
+                                    _shell_timeout = _ai_timeout if _shell_cmd.startswith(("uk ai ", "usekit ai ")) else 30
                                     _r = _sp.run(
                                         _shell_cmd, shell=True,
                                         capture_output=True, text=True,
-                                        timeout=30,
+                                        timeout=_shell_timeout,
                                     )
                                     if _r.stdout:
                                         print(_r.stdout, end="")
@@ -944,6 +952,59 @@ class EditorHandler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/reset_repl"):
             _init_repl_ns()
             self._send_json({"ok": True, "message": "REPL namespace reset"})
+            return
+
+        # ── /api/upload: 이미지/파일 업로드 (base64 → 파일 저장) ──────────
+        if self.path.startswith("/api/upload"):
+            import base64, tempfile
+            try:
+                n = int(self.headers.get("Content-Length") or "0")
+                raw = self.rfile.read(n) if n > 0 else b"{}"
+                payload = json.loads(raw.decode("utf-8") or "{}")
+                data_b64 = payload.get("data", "")
+                filename = payload.get("filename", "upload")
+                slot = payload.get("slot", "")
+                # 저장 디렉토리: ~/.usekit_uploads/
+                upload_dir = os.path.join(os.path.expanduser("~"), ".usekit_uploads")
+                os.makedirs(upload_dir, exist_ok=True)
+                # 고유 파일명 생성 (슬롯명 포함)
+                ext = os.path.splitext(filename)[1] or ".bin"
+                slot_prefix = "".join(c for c in slot if c.isalnum() or c in "._-") if slot else "noslot"
+                safe_name = f"{slot_prefix}_{int(__import__('time').time())}_{filename}"
+                # 파일명 sanitize
+                safe_name = "".join(c for c in safe_name if c.isalnum() or c in "._-")
+                if not safe_name:
+                    safe_name = "upload" + ext
+                save_path = os.path.join(upload_dir, safe_name)
+                # base64 디코딩 → 저장
+                file_bytes = base64.b64decode(data_b64)
+                with open(save_path, "wb") as f:
+                    f.write(file_bytes)
+                self._send_json({"ok": True, "path": save_path, "size": len(file_bytes)})
+            except Exception as e:
+                self._send_json({"ok": False, "error": str(e)}, status=500)
+            return
+
+        # ── /api/delete-uploads: 슬롯 연동 업로드 파일 일괄 삭제 ──────────
+        if self.path.startswith("/api/delete-uploads"):
+            import glob as _glob
+            try:
+                n = int(self.headers.get("Content-Length") or "0")
+                raw = self.rfile.read(n) if n > 0 else b"{}"
+                payload = json.loads(raw.decode("utf-8") or "{}")
+                slot = payload.get("slot", "")
+                if not slot:
+                    self._send_json({"ok": False, "error": "no slot"}, status=400)
+                    return
+                upload_dir = os.path.join(os.path.expanduser("~"), ".usekit_uploads")
+                slot_prefix = "".join(c for c in slot if c.isalnum() or c in "._-")
+                pattern = os.path.join(upload_dir, f"{slot_prefix}_*")
+                files = _glob.glob(pattern)
+                for f in files:
+                    os.remove(f)
+                self._send_json({"ok": True, "deleted": len(files)})
+            except Exception as e:
+                self._send_json({"ok": False, "error": str(e)}, status=500)
             return
 
         if not self.path.startswith("/api/save"):

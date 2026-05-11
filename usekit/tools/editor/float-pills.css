@@ -976,3 +976,202 @@ table.sgp-grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
   line-height: 1.65;
   overscroll-behavior: contain;
 }
+
+/* ══════════════════════════════════════════════════════════
+   FLOAT AI TOOL  (Run | Think | + | ▾)
+   chat 모드에서 floatRunTool 대신 표시
+═══════════════════════════════════════════════════════════ */
+#floatAiTool {
+  position: fixed; z-index: 99999;
+  right: 14px; bottom: 120px;
+  display: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  touch-action: none;
+  user-select: none;
+  background: rgba(28, 20, 44, 0.90);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 18px;
+  padding: 4px;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.34),
+    0 2px 8px rgba(0,0,0,0.18);
+  width: 40px;
+}
+
+#floatAiTool .fb {
+  width: 32px; height: 32px;
+  border: none; border-radius: 14px;
+  cursor: pointer; touch-action: none;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1px;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: filter 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+#floatAiTool .fb:active { filter: brightness(1.2); transform: scale(0.92); }
+
+#floatAiTool .fb-div {
+  height: 1px;
+  background: rgba(167, 139, 250, 0.12);
+  margin: 2px 4px;
+}
+
+/* ── AI Run 버튼 (보라 메인) ── */
+#floatAiRun {
+  background: linear-gradient(180deg, #9b6dff 0%, #7c4dff 100%);
+  border: 1px solid rgba(180, 160, 255, 0.35);
+  color: #f4f0ff;
+  box-shadow:
+    0 8px 18px rgba(124, 77, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+#floatAiRun .fb-icon { font-size: 12px; line-height: 1; }
+#floatAiRun .fb-label { font-size: 8px; letter-spacing: 0.04em; color: rgba(244, 240, 255, 0.82); }
+
+/* ── Think 버튼 ── */
+#floatAiThink {
+  background: rgba(44, 36, 58, 0.92);
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  color: rgba(200, 190, 230, 0.82);
+  opacity: 0.80;
+}
+#floatAiThink .fb-icon { font-size: 11px; line-height: 1; }
+#floatAiThink .fb-label { font-size: 7px; color: rgba(200, 190, 230, 0.55); }
+#floatAiThink.is-active {
+  opacity: 1;
+  background: rgba(80, 60, 120, 0.85);
+  border-color: rgba(167, 139, 250, 0.35);
+  color: #c8b8ff;
+}
+#floatAiThink.is-active .fb-label { color: rgba(200, 180, 255, 0.85); }
+
+/* ── Add(첨부) 버튼 ── */
+#floatAiAttach {
+  background: rgba(44, 36, 58, 0.92);
+  border: 1px solid rgba(167, 139, 250, 0.14);
+  color: rgba(200, 190, 230, 0.82);
+  opacity: 0.75;
+}
+#floatAiAttach .fb-icon { font-size: 13px; line-height: 1; font-weight: 700; }
+#floatAiAttach .fb-label { font-size: 7px; color: rgba(200, 190, 230, 0.50); }
+#floatAiAttach.is-active {
+  opacity: 1;
+  background: rgba(80, 60, 120, 0.85);
+  border-color: rgba(167, 139, 250, 0.30);
+}
+
+/* ── Model(▾) 버튼 ── */
+#floatAiModel {
+  background: rgba(44, 36, 58, 0.92);
+  border: 1px solid rgba(167, 139, 250, 0.12);
+  color: rgba(200, 190, 230, 0.72);
+  opacity: 0.70;
+}
+#floatAiModel .fb-icon { font-size: 12px; line-height: 1; }
+#floatAiModel .fb-label { font-size: 7px; color: rgba(200, 190, 230, 0.45); }
+
+/* ── AI 드롭업 패널 공통 ── */
+#floatAiModelPanel,
+#floatAiAttachPanel {
+  position: fixed; z-index: 100000;
+  display: none;
+  flex-direction: column;
+  background: rgba(22, 18, 36, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  border-radius: 14px;
+  padding: 4px 0;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+  min-width: 140px;
+}
+#floatAiModelPanel .tp-header,
+#floatAiAttachPanel .tp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+  color: rgba(167, 139, 250, 0.7);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.10);
+}
+#floatAiModelPanel .tp-btn,
+#floatAiAttachPanel .tp-btn {
+  display: flex; align-items: center; gap: 0.5rem;
+  width: 100%; padding: 0.4rem 0.8rem;
+  border: none; background: transparent;
+  color: rgba(200, 195, 220, 0.85);
+  font-size: 0.78rem; font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#floatAiModelPanel .tp-btn:active,
+#floatAiAttachPanel .tp-btn:active {
+  background: rgba(167, 139, 250, 0.15);
+}
+.ai-model-opt.is-selected {
+  color: #a78bfa !important;
+  font-weight: 700;
+}
+.ai-model-opt.is-selected .tp-icon {
+  color: #a78bfa !important;
+}
+
+/* ── AI Attach Preview Bar ── */
+#aiAttachPreview {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 5px 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: rgba(167, 139, 250, 0.08);
+  border-top: 1px solid rgba(167, 139, 250, 0.25);
+  scrollbar-width: none;
+}
+#aiAttachPreview::-webkit-scrollbar { display: none; }
+
+.ai-attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 12px;
+  background: rgba(167, 139, 250, 0.15);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  font-size: 11px;
+  font-family: -apple-system, sans-serif;
+  color: rgba(230, 225, 245, 0.85);
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 180px;
+  cursor: default;
+}
+.ai-attach-chip .chip-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.ai-attach-chip .chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ai-attach-chip .chip-close {
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 0 0 2px;
+  color: rgba(255, 120, 120, 0.7);
+  cursor: pointer;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ai-attach-chip .chip-close:active {
+  color: #ff6b6b;
+}
+

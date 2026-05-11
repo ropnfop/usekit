@@ -37,6 +37,8 @@ const SlotManager = (function () {
         if (_autoTimer) clearTimeout(_autoTimer);
         _autoTimer = setTimeout(() => {
             _autoTimer = null;
+            // chat 모드에서는 에디터에 prompt가 들어있으므로 슬롯에 저장하지 않음
+            if (window.AiChat?.isChat) return;
             if (_active < 0 || !_slots[_active]) return;
             const slot = _slots[_active];
             // storage('local'|'usekit')는 Save 목적지일 뿐 — autosave는 항상 OPFS(slot_xxx)에
@@ -48,6 +50,8 @@ const SlotManager = (function () {
     // ── Mark dirty ────────────────────────────────────────────
     function _markDirty() {
         if (_active < 0 || !_slots[_active] || _switching) return;
+        // chat 모드에서는 dirty 표시/autosave 하지 않음
+        if (window.AiChat?.isChat) return;
         const slot = _slots[_active];
         if (!slot.isDirty) { slot.isDirty = true; _display(); _saveMeta(); }
         _scheduleAutosave();
@@ -376,6 +380,9 @@ const SlotManager = (function () {
         async function _doClose() {
             _editorStateCache.delete(slot.slotIndex);
             SlotStorage.removeSlot(slot.fileName);
+            SlotStorage.removeChat(slot.fileName);
+            // 슬롯 연동 업로드 이미지 가비지 삭제
+            try { fetch('/api/delete-uploads', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slot:slot.fileName}) }); } catch(e) {}
             _slots.splice(idx, 1);
             _saveMeta();
             if (_slots.length === 0) {
@@ -443,6 +450,7 @@ const SlotManager = (function () {
         }
         SlotStorage.migrateLocalKey(slot.fileName, name, { allowOverwrite }); // 로컬 파일 rename
         SlotStorage.migrateSlotKey(slot.fileName, name);                          // slot_ 작업본도 rename (고아 방지)
+        SlotStorage.migrateChatKey(slot.fileName, name);                          // chat_ 기록도 rename
         slot.fileName = name; slot.isDirty = true;
         _saveMeta();
         const nameEl = document.getElementById('metaFile');
@@ -456,6 +464,9 @@ const SlotManager = (function () {
     async function deleteSlot(name) {
         SlotStorage.removeLocal(name);
         SlotStorage.removeSlot(name);
+        SlotStorage.removeChat(name);
+        // 슬롯 연동 업로드 이미지 가비지 삭제
+        try { fetch('/api/delete-uploads', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slot:name}) }); } catch(e) {}
         const idx = _slots.findIndex(s => s.fileName === name);
         if (idx < 0) return;
         _editorStateCache.delete(_slots[idx].slotIndex);
@@ -581,6 +592,8 @@ const SlotManager = (function () {
                     .forEach(i => {
                         const wasActive = i === _active;
                         _editorStateCache.delete(_slots[i].slotIndex);
+                        // 슬롯 연동 업로드 이미지 가비지 삭제
+                        try { fetch('/api/delete-uploads', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({slot:_slots[i].fileName}) }); } catch(e) {}
                         SlotStorage.removeSlot(_slots[i].fileName);
                         _slots.splice(i, 1);
                         if (wasActive) _active = Math.min(i, _slots.length - 1);
@@ -700,6 +713,12 @@ const SlotManager = (function () {
             if (orphans.length > 0) {
                 console.log('[SlotManager] orphan slot files:', orphans);
                 orphans.forEach(n => SlotStorage.removeSlot(n));
+            }
+            // 고아 chat_ 파일도 정리
+            const chatOrphans = SlotStorage.listChatFileNames().filter(n => !knownNames.has(n));
+            if (chatOrphans.length > 0) {
+                console.log('[SlotManager] orphan chat files:', chatOrphans);
+                chatOrphans.forEach(n => SlotStorage.removeChat(n));
             }
             // 실패했던 swap 파일도 함께 재시도
             if (SlotStorage.sweepSwapFiles) SlotStorage.sweepSwapFiles();

@@ -352,7 +352,7 @@
       return;
     }
     const id = target?.id || target?.closest?.('[id]')?.id;
-    if      (id === 'floatBtnRun'    || target?.closest?.('#floatBtnRun'))    { if (_cliMode) _doExecCli(); else _doExec(); }
+    if      (id === 'floatBtnRun'    || target?.closest?.('#floatBtnRun'))    { if (window.AiChat?.isChat) { window.AiChat.run(); return; } if (_cliMode) _doExecCli(); else _doExec(); }
     else if (id === 'floatBtnOutput' || target?.closest?.('#floatBtnOutput')) { _toggleOutput(); }
     else if (id === 'floatBtnTool'   || target?.closest?.('#floatBtnTool'))   { _toggleTool(); }
   }
@@ -423,12 +423,13 @@
     });
   }
   _bindTpGroupToggle('floatTpRunToggle',  'floatTpRunSection',  'floatTpRunArrow');
-  _bindTpGroupToggle('floatTpEditToggle', 'floatTpEditSection', 'floatTpEditArrow');
+  _bindTpGroupToggle('floatTpModeToggle', 'floatTpModeSection', 'floatTpModeArrow');
   _bindTpGroupToggle('floatTpMenuToggle', 'floatTpMenuSection', 'floatTpMenuArrow');
 
   // Run 그룹 — 기존 동작 유지
   document.getElementById('floatTpRun')?.addEventListener('click', () => {
     toolPanel.style.display = 'none'; btnTool.classList.remove('is-active');
+    if (window.AiChat?.isChat) { window.AiChat.run(); return; }
     if (_cliMode) { _doExecCli(); return; }
     // Show live ns indicator
     const dot = document.getElementById('floatTpLiveDot');
@@ -438,17 +439,20 @@
   });
   document.getElementById('floatTpPrint')?.addEventListener('click', () => {
     toolPanel.style.display = 'none'; btnTool.classList.remove('is-active');
+    if (window.AiChat?.isChat) { window.AiChat.run(); return; }
     if (_cliMode) { _doExecCli(); return; }
     if (window.runPrint) window.runPrint();
     else console.warn('[Tool] runPrint not ready');
   });
   document.getElementById('floatTpLine')?.addEventListener('click', () => {
+    if (window.AiChat?.isChat) { window.AiChat.line(); return; }
     if (_cliMode) { _doExecCli(); return; }
     // Line Run은 연타 사용이 주 패턴이라 메뉴 유지
     if (window.runLine) window.runLine();
     else console.warn('[Tool] runLine not ready');
   });
   document.getElementById('floatTpBlock')?.addEventListener('click', () => {
+    if (window.AiChat?.isChat) { window.AiChat.block(); return; }
     if (_cliMode) { _doExecCli(); return; }
     // Current Block도 연타 사용 패턴이라 메뉴 유지
     if (window.runBlock) window.runBlock();
@@ -456,6 +460,7 @@
   });
   document.getElementById('floatTpFileTmp')?.addEventListener('click', () => {
     toolPanel.style.display = 'none'; btnTool.classList.remove('is-active');
+    if (window.AiChat?.isChat) { window.AiChat.run(); return; }
     if (_cliMode) { _doExecCli(); return; }
     _doExecFileTmp();
   });
@@ -479,85 +484,10 @@
     }
   });
 
-  // ── Edit 그룹 ─────────────────────────────────────────────
-  //   공통: 선택 있으면 선택만, 없으면 전체 문서 대상
-  //   팝업은 실행 후 닫음 (Copy Tool 패턴)
-  // ────────────────────────────────────────────────────────────
   function _closeToolPanel() {
     toolPanel.style.display = 'none';
     btnTool.classList.remove('is-active');
   }
-
-  // 현재 선택 범위 반환. 선택 없으면 전체 문서 범위.
-  function _getEditRange(view) {
-    const sel = view.state.selection.main;
-    if (sel.from !== sel.to) return { from: sel.from, to: sel.to, hasSelection: true };
-    return { from: 0, to: view.state.doc.length, hasSelection: false };
-  }
-
-  // Case transform — 순환 3단계: UPPER → lower → Title → UPPER...
-  // 상태는 IIFE 변수로 유지 (다음 탭에서 다음 단계로)
-  let _caseStage = 0; // 0=UPPER, 1=lower, 2=Title
-  document.getElementById('floatTpCaseTransform')?.addEventListener('click', () => {
-    _closeToolPanel();
-    const view = window.Editor?.get?.();
-    if (!view) return;
-    const { from, to } = _getEditRange(view);
-    if (from === to) return;
-    const src = view.state.sliceDoc(from, to);
-    let out;
-    if (_caseStage === 0) {
-      out = src.toUpperCase();
-    } else if (_caseStage === 1) {
-      out = src.toLowerCase();
-    } else {
-      // Title case: 각 단어의 첫 글자만 대문자 (공백/탭/줄바꿈 기준)
-      out = src.toLowerCase().replace(/(^|\s)(\S)/g, (_, ws, ch) => ws + ch.toUpperCase());
-    }
-    _caseStage = (_caseStage + 1) % 3;
-    if (out === src) return;
-    view.dispatch({
-      changes:   { from, to, insert: out },
-      selection: { anchor: from, head: from + out.length },
-      userEvent: 'input.replace',
-    });
-  });
-
-  // Tab → Space — 탭 1개를 공백 4개로 변환
-  document.getElementById('floatTpTabToSpace')?.addEventListener('click', () => {
-    _closeToolPanel();
-    const view = window.Editor?.get?.();
-    if (!view) return;
-    const { from, to } = _getEditRange(view);
-    if (from === to) return;
-    const src = view.state.sliceDoc(from, to);
-    const tabSize = view.state.tabSize || 4;
-    const spaces = ' '.repeat(tabSize);
-    if (!src.includes('\t')) return;
-    const out = src.replace(/\t/g, spaces);
-    view.dispatch({
-      changes:   { from, to, insert: out },
-      selection: { anchor: from, head: from + out.length },
-      userEvent: 'input.replace',
-    });
-  });
-
-  // Trim trailing — 각 라인 끝 공백/탭 제거
-  document.getElementById('floatTpTrimTrailing')?.addEventListener('click', () => {
-    _closeToolPanel();
-    const view = window.Editor?.get?.();
-    if (!view) return;
-    const { from, to } = _getEditRange(view);
-    if (from === to) return;
-    const src = view.state.sliceDoc(from, to);
-    const out = src.replace(/[ \t]+$/gm, '');
-    if (out === src) return;
-    view.dispatch({
-      changes:   { from, to, insert: out },
-      selection: { anchor: from, head: from + out.length },
-      userEvent: 'input.replace',
-    });
-  });
 
   // ── Layout 토글 (세로 ↔ 가로) ── 위치 유지
   function _setLayout(orientation, opts) {
@@ -763,9 +693,9 @@
       return b;
     };
 
-    body.appendChild(mkBtn('▶', 'Run', '#7ee787', () => { if (_cliMode) _doExecCli(); else _doExec(); }));
-    body.appendChild(mkBtn('~', 'Line', '#79c0ff', () => { if (_cliMode) _doExecCli(); else if (window.runLine) window.runLine(); }));
-    body.appendChild(mkBtn('◻', 'Block', '#d2a8ff', () => { if (_cliMode) _doExecCli(); else if (window.runBlock) window.runBlock(); }));
+    body.appendChild(mkBtn('▶', 'Run', '#7ee787', () => { if (window.AiChat?.isChat) { window.AiChat.run(); return; } if (_cliMode) _doExecCli(); else _doExec(); }));
+    body.appendChild(mkBtn('~', 'Line', '#79c0ff', () => { if (window.AiChat?.isChat) { window.AiChat.line(); return; } if (_cliMode) _doExecCli(); else if (window.runLine) window.runLine(); }));
+    body.appendChild(mkBtn('◻', 'Block', '#d2a8ff', () => { if (window.AiChat?.isChat) { window.AiChat.block(); return; } if (_cliMode) _doExecCli(); else if (window.runBlock) window.runBlock(); }));
     el.appendChild(body);
 
     // 접힌 상태 캡션
@@ -890,22 +820,25 @@
   document.addEventListener('DOMContentLoaded', () => {
     const host = document.getElementById('editor-host');
     if (host) {
-      host.addEventListener('mousedown', () => {
+      const _hostCloseOverlay = () => {
         if (_runEditActive) return;
         const p = document.getElementById('runPanel');
         if (p && p.classList.contains('is-open')) {
+          // chat 모드: overlay 닫고 inline 복귀
+          if (window.AiChat?.isChat) {
+            p.classList.remove('is-open');
+            btnOut.classList.remove('is-active');
+            _enterRunEditMode();
+            // chat 모드 UI 복원 (edit ● 덮어쓰기)
+            if (window.AiChat._updateTabUI) window.AiChat._updateTabUI();
+            return;
+          }
           p.classList.remove('is-open');
           btnOut.classList.remove('is-active');
         }
-      });
-      host.addEventListener('touchstart', () => {
-        if (_runEditActive) return;
-        const p = document.getElementById('runPanel');
-        if (p && p.classList.contains('is-open')) {
-          p.classList.remove('is-open');
-          btnOut.classList.remove('is-active');
-        }
-      }, { passive: true });
+      };
+      host.addEventListener('mousedown', _hostCloseOverlay);
+      host.addEventListener('touchstart', _hostCloseOverlay, { passive: true });
     }
   });
 
@@ -1083,9 +1016,11 @@
   window.RunView = {
     toggle: toggleFloat,
     get editModeActive() { return _runEditActive; },
+    enterEditMode: _enterRunEditMode,
     exitEditMode: _exitRunEditMode,
     execFileTmp: _doExecFileTmp,
     get cliMode() { return _cliMode; },
     toggleCli: _toggleCliMode,
+    _refreshMiniRun() { if (_runEditActive) { _hideMiniRun(); _showMiniRun(); } },
   };
 })();

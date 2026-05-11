@@ -559,6 +559,38 @@ const SlotStorage = (function () {
             .map(k => k.slice(SLOT_PREFIX.length));
     }
 
+    // ── Chat-file API (챗 기록 저장, prefix: "chat_") ─────────────
+    const CHAT_PREFIX = 'chat_';
+
+    function _chatKey(name) { return CHAT_PREFIX + name; }
+
+    function writeChat(name, data) {
+        return writeLocal(_chatKey(name), data);
+    }
+
+    function readChat(name) {
+        return readLocal(_chatKey(name));
+    }
+
+    async function readChatAsync(name) {
+        return readLocalAsync(_chatKey(name));
+    }
+
+    function removeChat(name) {
+        removeLocal(_chatKey(name));
+    }
+
+    function migrateChatKey(oldName, newName) {
+        return migrateLocalKey(_chatKey(oldName), _chatKey(newName), { allowOverwrite: true });
+    }
+
+    // 챗파일 목록 — "chat_" prefix 제거해서 반환
+    function listChatFileNames() {
+        return [..._cache.keys()]
+            .filter(k => k.startsWith(CHAT_PREFIX))
+            .map(k => k.slice(CHAT_PREFIX.length));
+    }
+
     // ── Meta helpers ──────────────────────────────────────────────
     function getLocalOnlyMeta(name) {
         try {
@@ -598,6 +630,7 @@ const SlotStorage = (function () {
         readLocal, readLocalAsync, writeLocal, removeLocal, localKeyExists, migrateLocalKey,
         listLocalSlotNames,
         writeSlot, readSlot, readSlotAsync, removeSlot, migrateSlotKey, listSlotFileNames,
+        writeChat, readChat, readChatAsync, removeChat, migrateChatKey, listChatFileNames,
         getLocalOnlyMeta, getLocalOnlyMetaAsync,
         sanitizeFileName,
         sweepSwapFiles: _sweepSwapRetryQueue,

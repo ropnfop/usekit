@@ -98,6 +98,8 @@
             <main class="editor-section">
                 <div id="cliBadge" style="display:none;position:absolute;top:6px;left:8px;z-index:50;padding:2px 10px 2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;letter-spacing:0.04em;color:#1c1812;background:linear-gradient(135deg,#e8b15a,#d09028);pointer-events:none;opacity:0.92;">usekit&gt;</div>
                 <div id="editor-host"></div>
+                <!-- AI 첨부 프리뷰 바 (첨부 있을 때만 표시) -->
+                <div id="aiAttachPreview" style="display:none;"></div>
             </main>
            
             <div class="action-nav-wrapper">
@@ -115,7 +117,7 @@
                             <button id="btnCopy" class="btn" style="display:none;">copy</button>
                             <button id="btnPaste" class="btn" style="display:none;">paste</button>
                             <button id="btnMenuTool" class="btn">menu</button>
-                            <button id="btnCopyTool" class="btn">clip</button>
+                            <button id="btnCopyTool" class="btn">EDIT</button>
                             <button id="btnRunTool" class="btn">run</button>
                             <button id="btnSqlView" class="btn">sql</button>
                         </div>
@@ -963,7 +965,7 @@
       };
     </script>
     <script>
-      const DEV_MODE = false; // 🔧 개발 중: true | 배포 시: false
+      const DEV_MODE = true; // 🔧 개발 중: true | 배포 시: false
       window._BUILD_VER = '0.2.0'; // theme href 버전쿼리용 (v0.2.0)
 
       if (!DEV_MODE && 'serviceWorker' in navigator) {
@@ -1050,32 +1052,84 @@ document.addEventListener('DOMContentLoaded', () => {
   </button>
 </div>
 
+<!-- ───────────────────────────────────────────────────────
+     FLOAT AI CHAT  (Run | Think | + | ▾)
+     chat 모드에서만 표시. RUN pill과 교대.
+─────────────────────────────────────────────────────── -->
+<div id="floatAiTool" style="display:none !important;">
+  <button id="floatAiRun" class="fb">
+    <span class="fb-icon">▶</span>
+    <span class="fb-label">Run</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatAiThink" class="fb">
+    <span class="fb-icon">◎</span>
+    <span class="fb-label" id="floatAiThinkLabel">Think</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatAiAttach" class="fb">
+    <span class="fb-icon">＋</span>
+    <span class="fb-label">Add</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatAiModel" class="fb">
+    <span class="fb-icon">▾</span>
+    <span class="fb-label" id="floatAiModelLabel">auto</span>
+  </button>
+</div>
+
+<!-- AI 모델 선택 드롭업 -->
+<div id="floatAiModelPanel">
+  <div class="tp-header"><span>Model</span><button class="float-panel-close" data-panel="floatAiModelPanel">✕</button></div>
+  <button class="tp-btn ai-model-opt" data-model="auto" style="padding-left:1.2rem;"><span class="tp-icon" style="color:#a78bfa;">◆</span> Auto</button>
+  <button class="tp-btn ai-model-opt" data-model="sonnet" style="padding-left:1.2rem;"><span class="tp-icon" style="color:#7ee787;">◇</span> Sonnet</button>
+  <button class="tp-btn ai-model-opt" data-model="opus" style="padding-left:1.2rem;"><span class="tp-icon" style="color:#f0883e;">◇</span> Opus</button>
+  <button class="tp-btn ai-model-opt" data-model="haiku" style="padding-left:1.2rem;"><span class="tp-icon" style="color:#58a6ff;">◇</span> Haiku</button>
+</div>
+
+<!-- AI 첨부 선택 드롭업 -->
+<div id="floatAiAttachPanel">
+  <div class="tp-header"><span>Attach</span><button class="float-panel-close" data-panel="floatAiAttachPanel">✕</button></div>
+  <button id="aiAttachSlot" class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon">📋</span> Slot</button>
+  <button id="aiAttachFile" class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon">📄</span> File</button>
+  <button id="aiAttachImage" class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon">📷</span> Image</button>
+  <input type="file" id="aiFileInput" accept=".txt,.py,.js,.json,.csv,.md,.html,.css,.yaml,.yml,.toml,.cfg,.ini,.xml,.sh,.bat,.log,.sql" style="display:none;">
+  <input type="file" id="aiImageInput" accept="image/*" style="display:none;">
+</div>
+
 <!-- Tool 메뉴 패널 -->
 <div id="floatToolPanel">
-  <div class="tp-header"><span>Run Tool</span><button class="float-panel-close" data-panel="floatToolPanel">✕</button></div>
+  <div class="tp-header"><span id="floatTpTitle">Run Tool</span><button class="float-panel-close" data-panel="floatToolPanel">✕</button></div>
 
-  <!-- ▾ RUN 그룹 (기본 펼침) -->
-  <button id="floatTpRunToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#7BA8D9;">▸</span> <span class="tp-grp-label" style="color:#7BA8D9;">Run</span><span id="floatTpRunArrow" style="margin-left:auto;opacity:0.4;color:#7BA8D9;">▴</span></button>
-  <div id="floatTpRunSection" style="display:block;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
-    <button id="floatTpRun"   class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#3fb950;">▶</span> Live<span id="floatTpLiveDot" style="display:none;color:#3fb950;margin-left:0.4em;font-size:0.6em;">●</span></button>
-    <button id="floatTpPrint" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">🖨</span> Eval</button>
-    <button id="floatTpLine"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">⤳</span> Line</button>
-    <button id="floatTpBlock" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">▣</span> Block</button>
-    <button id="floatTpFileTmp" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">📄</span> File</button>
-    <div class="tp-sep" style="margin:2px 0.8rem;"></div>
-    <button id="floatTpResetRepl" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">⟲</span> Reset</button>
-    <div class="tp-sep" style="margin:2px 0.8rem;"></div>
-    <button id="floatTpCli" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#d09028;">⌘</span> <span id="floatTpCliLabel">CLI</span></button>
+  <!-- ═══ EDIT MODE 섹션 (챗모드에서 숨김) ═══ -->
+  <div id="floatTpEditGroup">
+    <!-- ▾ RUN 그룹 (기본 펼침) -->
+    <button id="floatTpRunToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#7BA8D9;">▸</span> <span class="tp-grp-label" style="color:#7BA8D9;">Run</span><span id="floatTpRunArrow" style="margin-left:auto;opacity:0.4;color:#7BA8D9;">▴</span></button>
+    <div id="floatTpRunSection" style="display:block;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
+      <button id="floatTpRun"   class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#3fb950;">▶</span> Live<span id="floatTpLiveDot" style="display:none;color:#3fb950;margin-left:0.4em;font-size:0.6em;">●</span></button>
+      <button id="floatTpPrint" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">🖨</span> Eval</button>
+      <button id="floatTpLine"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">⤳</span> Line</button>
+      <button id="floatTpBlock" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">▣</span> Block</button>
+      <button id="floatTpFileTmp" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">📄</span> File</button>
+      <div class="tp-sep" style="margin:2px 0.8rem;"></div>
+      <button id="floatTpResetRepl" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">⟲</span> Reset</button>
+    </div>
+  </div>
+
+  <!-- ═══ CHAT MODE 섹션 (에디트모드에서 숨김) ═══ -->
+  <div id="floatTpChatGroup" style="display:none;">
+    <button id="floatTpThink" class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon" style="color:#a78bfa;">◎</span> <span id="floatTpThinkLabel">Think</span></button>
+    <button id="floatTpAdd"   class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon" style="color:#7ee787;">＋</span> Add</button>
+    <button id="floatTpModel" class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon" style="color:#58a6ff;">▾</span> <span id="floatTpModelLabel">auto</span></button>
   </div>
 
   <div class="tp-sep"></div>
 
-  <!-- ▸ EDIT 그룹 (기본 접힘) -->
-  <button id="floatTpEditToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#94A3B8;">▸</span> <span class="tp-grp-label" style="color:#94A3B8;">Edit</span><span id="floatTpEditArrow" style="margin-left:auto;opacity:0.4;color:#94A3B8;">▾</span></button>
-  <div id="floatTpEditSection" style="display:none;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
-    <button id="floatTpCaseTransform"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">Aa</span> Case transform</button>
-    <button id="floatTpTabToSpace"     class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">→␣</span> Tab → Space</button>
-    <button id="floatTpTrimTrailing"   class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">␣✕</span> Trim trailing</button>
+  <!-- ▸ MODE 그룹 (기본 접힘) -->
+  <button id="floatTpModeToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#94A3B8;">▸</span> <span class="tp-grp-label" style="color:#94A3B8;">Mode</span><span id="floatTpModeArrow" style="margin-left:auto;opacity:0.4;color:#94A3B8;">▾</span></button>
+  <div id="floatTpModeSection" style="display:none;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
+    <button id="floatTpCli" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#d09028;">⌘</span> <span id="floatTpCliLabel">CLI</span></button>
+    <button id="floatTpAi"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#a78bfa;">◆</span> <span id="floatTpAiLabel">AI</span></button>
   </div>
 
   <div class="tp-sep"></div>
@@ -1157,7 +1211,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 
 <!-- ═════════════════════════════════════════════════════════════
-     CLIPBOARD pill — 3버튼 (COPY/ALL/TOOL), 민트 테마
+     EDIT pill — 3버튼 (COPY/PASTE/TOOL), 민트 테마
      트리거: 퀵메뉴 CTRL 활성 상태에서 TAB 탭 → 토글
      버튼 동작: 기존 키패드 버튼에 .click() forward
 ══════════════════════════════════════════════════════════════ -->
@@ -1178,9 +1232,9 @@ document.addEventListener('DOMContentLoaded', () => {
   </button>
 </div>
 
-<!-- Clipboard TOOL 메뉴 팝업 (민트 테마) -->
+<!-- EDIT TOOL 메뉴 팝업 (민트 테마) -->
 <div id="floatClipToolPanel">
-  <div class="ctp-header"><span>Copy Tool</span><button class="float-panel-close" data-panel="floatClipToolPanel">✕</button></div>
+  <div class="ctp-header"><span>EDIT TOOL</span><button class="float-panel-close" data-panel="floatClipToolPanel">✕</button></div>
 
   <!-- ▾ CLIPBOARD 그룹 (기본 펼침) -->
   <button id="floatCtpClipToggle" class="ctp-btn ctp-grp-toggle"><span class="ctp-icon">▸</span> <span>Clipboard</span><span id="floatCtpClipArrow" style="margin-left:auto;opacity:0.5;">▴</span></button>
@@ -1192,7 +1246,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   <div class="ctp-sep"></div>
 
-  <!-- ▸ MENU 그룹 (기본 접힘) — pill 간 전환은 Menu pill(허브)로 일원화 -->
+  <!-- ▾ EDIT 그룹 (기본 접힘) -->
+  <button id="floatCtpEditToggle" class="ctp-btn ctp-grp-toggle"><span class="ctp-icon">▸</span> <span>Edit</span><span id="floatCtpEditArrow" style="margin-left:auto;opacity:0.5;">▾</span></button>
+  <div id="floatCtpEditSection" style="display:none;">
+    <button id="floatCtpCaseTransform"  class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">Aa</span> Case transform</button>
+    <button id="floatCtpTabToSpace"     class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">→␣</span> Tab → Space</button>
+    <button id="floatCtpTrimTrailing"   class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">␣✕</span> Trim trailing</button>
+  </div>
+
+  <div class="ctp-sep"></div>
+
+  <!-- ▸ MENU 그룹 (기본 접힘) -->
   <button id="floatCtpMenuToggle" class="ctp-btn ctp-grp-toggle"><span class="ctp-icon">▸</span> <span>Menu</span><span id="floatCtpMenuArrow" style="margin-left:auto;opacity:0.5;">▾</span></button>
   <div id="floatCtpMenuSection" style="display:none;">
     <button id="floatCtpMenuHorizontal" class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon" id="floatCtpLayoutIcon">▦</span> <span id="floatCtpLayoutLabel">Horizontal</span></button>
@@ -1291,7 +1355,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 <!-- ═════════════════════════════════════════════════════════════
-     CLIPBOARD pill 로직
+     EDIT pill 로직
      - 풋터 CTRL+TAB 트리거 (CTRL 활성 상태에서 TAB 클릭)
      - 드래그 / 위치 저장 / 레이아웃 토글
      - 버튼 → 기존 키패드 버튼 .click() forward
@@ -1323,6 +1387,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     <script src="js2/float/float_sql.js?v=0.2.0"></script>
     <script src="js2/float/float_run.js?v=0.2.0"></script>
+    <script src="js2/float/float_ai.js?v=0.2.0"></script>
     <script src="js2/float/float_clip.js?v=0.2.0"></script>
     <script src="js2/float/float_menu.js?v=0.2.0"></script>
     <script src="js2/float/float_common.js?v=0.2.0"></script>
