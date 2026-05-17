@@ -1,0 +1,277 @@
+# Path: usekit.sys.sys_yaml.sys_const.yaml
+# -----------------------------------------------------------------------------------------------
+#  Created by: THE Little Prince, in harmony with ROP and FOP
+#  — memory is emotion —
+# -----------------------------------------------------------------------------------------------
+# Note: BASE_PATH and USEKIT_PATH are auto-calculated from .env (ENV_BASE_PATH).
+#       No hardcoded paths are needed. They are injected at runtime by loader_env.py.
+# -----------------------------------------------------------------------------------------------
+
+# USEKIT
+SYS_PATH:
+  root: "usekit/sys"
+  json: "sys_json"
+  yaml: "sys_yaml"
+
+# ────────────────────────────────────────────────
+# [USE ZONE: Basic - fixed] use.read.json() / use.read.json.sub()
+# ────────────────────────────────────────────────
+
+# DB: Database
+DB_PATH:
+  root: "data/table/db"
+  db: "base.db"
+  db_sub: "sub.db"
+
+# DDL: Data Definition Language
+DDL_PATH:
+  root: "data/table/ddl"
+  ddl: "base"
+  ddl_sub: "sub"
+
+# SQL: Data Manipulation / Query files
+SQL_PATH:
+  root: "data/table/sql"
+  sql: "base"
+  sql_sub: "sub"
+
+# PYP: Python module files
+PYP_PATH:
+  root: "src"
+  py: "base"
+  py_sub: "sub"
+  pyp: "base"
+  pyp_sub: "sub"
+
+# ────────────────────────────────────────────────
+# [DATA: Per-format paths]
+# Each format has its own root.
+# Subkeys keep their existing names, such as json, json_sub, and so on.
+# ────────────────────────────────────────────────
+
+# JSON
+JSON_PATH:
+  root: "data/json"
+  json: "base"
+  json_sub: "sub"
+
+# YAML
+YAML_PATH:
+  root: "data/yaml"
+  yaml: "base"
+  yaml_sub: "sub"
+
+# LOG
+LOG_PATH:
+  root: "data/log"
+  log: "base"
+  log_sub: "sub"
+
+# MD
+MD_PATH:
+  root: "docs"
+  md: "base"
+  md_sub: "sub"
+
+# TXT
+TXT_PATH:
+  root: "data/common/txt"
+  txt: "base"
+  txt_sub: "sub"
+
+# CSV
+CSV_PATH:
+  root: "data/common/csv"
+  csv: "base"
+  csv_sub: "sub"
+
+# ANY: Generic data zone
+ANY_PATH:
+  root: "data/common/any"
+  any: "base"
+  any_sub: "sub"
+
+# KM
+KM_PATH:
+  root: "data/any/km"
+  km: "base"
+  km_sub: "sub"
+
+# PKL: Runtime cache
+PKL_PATH:
+  root: "data"
+  pkl: ".runtime_cache"
+
+# TMP: Temporary files
+TMP_PATH:
+  root: "data"
+  txt: "tmp"
+  md: "tmp"
+  py: "tmp"
+  pyp: "tmp"
+  json: "tmp"
+  yaml: "tmp"
+  ddl: "tmp"
+  sql: "tmp"
+  km: "tmp"
+  any: "tmp"
+
+# CUS: Custom user-defined paths
+CUS_PATH:
+  root: "/"
+  tests: "tests"
+  backup: "backup"
+  custom: "data/custom"
+
+# ────────────────────────────────────────────────
+# [DATA Formats]
+# fmt: any, mod: any  → the final location is determined by loc.
+# fmt: any, mod: txt  → fmt is overridden as txt.
+# ────────────────────────────────────────────────
+
+# Section mapping for path generation.
+# Used by help_path.py.
+FORMAT_SECTION_MAP:
+  any: ANY_PATH
+  tmp: TMP_PATH
+  pkl: PKL_PATH
+  cus: CUS_PATH
+
+  json: JSON_PATH
+  yaml: YAML_PATH
+  txt: TXT_PATH
+  csv: CSV_PATH
+  md: MD_PATH
+  log: LOG_PATH
+
+  ddl: DDL_PATH
+  sql: SQL_PATH
+  py: PYP_PATH
+  pyp: PYP_PATH
+  km: KM_PATH
+
+# Extension handling for the any format is handled in help_format.py.
+# Only formats with function support, such as use.read.json.base(), are mapped here.
+EXTENSION_MAP:
+  json: ".json"
+  yaml: ".yaml"
+  ddl: ".sql"
+  sql: ".sql"
+  txt: ".txt"
+  log: ".log"
+  csv: ".csv"
+  md: ".md"
+  pyp: ".py"
+  py: ".py"
+  pkl: ".pkl"
+  km: ".km"
+  any: ".txt"
+
+# [USE ZONE END]
+
+# ────────────────────────────────────────────────
+# [TIME]
+# ────────────────────────────────────────────────
+TIME:
+  default_tz: "local"
+# default_tz: "Asia/Seoul"
+
+# Language: "kr" for Korean help, "en" for English help. Default: en.
+LANG: "en"
+
+# ────────────────────────────────────────────────
+# [EXT: Extension paths] use.read.json.[userfolder]()
+# ────────────────────────────────────────────────
+DB_EXT_PATH:
+  root: "data/db"
+  db01: "ext_db01.db"
+  db02: "ext_db02.db"
+
+DML_EXT_PATH:
+  root: "data/tables/ext"
+  dml01: "dml01"
+  dml02: "dml02"
+
+MOD_EXT_PATH:
+  root: "main/module"
+  mod01: "sub01"
+  mod02: "sub02"
+
+DATA_EXT_PATH:
+  root: "data"
+  json: "json"
+  json01: "json"
+  yaml01: "yaml/yaml01"
+  txt01: "common/files"
+  csv01: "common/files"
+  md01: "common/files"
+
+# ────────────────────────────────────────────────
+# [DSL] dsl.set("format", "folder_name", dir_path) / dsl.get()
+# ────────────────────────────────────────────────
+DSL_PATH:
+  json:
+    temp: "/tmp/json/"
+  yaml:
+    temp: "/tmp/yaml/"
+  txt:
+    temp: "/tmp/txt/"
+  csv:
+    temp: "/tmp/csv/"
+
+# ────────────────────────────────────────────────
+# [DEBUG]
+# ────────────────────────────────────────────────
+DEBUG: true
+DEBUG_OPTIONS:
+  timer: false
+  loader: false
+  helper: false
+  safer: false
+  helperext: false
+  pyp: false
+  json: false
+  yaml: false
+  ddl: false
+  sql: false
+  txt: false
+  md: false
+  csv: false
+  pkl: false
+  log: false
+  km: false
+  any: false
+
+# ────────────────────────────────────────────────
+# [MODEL]
+# ────────────────────────────────────────────────
+USE_VERTEX: false
+VERTEX_ID: "vertex-ai-demo"
+GCP_ID: "vertex-ai-demo"
+GCP_LOCATION: "us-central1"
+
+MODEL:
+  default: G15F
+  mapping:
+    BISON: "text-bison-001"
+    CLAUDE: "claude-3-opus-20240229"
+    G15F: "gemini-1.5-flash"
+    G15P: "gemini-1.5-pro"
+    G20F: "gemini-2.0-flash"
+    G20L: "gemini-2.0-flash-lite"
+    G20P: "gemini-2.0-pro"
+    G20PR: "gemini-2.0-pro-vision"
+    GPT35: "gpt-3.5-turbo"
+    GPT4: "gpt-4"
+    GPT4V: "gpt-4-vision-preview"
+    LLAMA38: "meta-llama/Meta-Llama-3-8B"
+    LLAMA370: "meta-llama/Meta-Llama-3-70B"
+    MIXTRAL: "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    PALM2: "palm-2-chat-bison"
+    WHISPER: "openai/whisper-large-v3"
+
+    # GEMMA
+    # Relative paths are resolved from BASE_PATH.
+    GEM3-4B-IT: "gemma/gemma-3-4b-it"
+    GEM3-1B-IT: "gemma/gemma-3-1b-it"
+    GEM3-270M-IT: "gemma/gemma-3-270m-it"

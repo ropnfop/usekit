@@ -1,0 +1,235 @@
+/* Path: usekit/tools/editor/theme-white.css
+ * ---------------------------------------------------------------------------------------------
+ * Created by: THE Little Prince, in harmony with ROP and FOP
+ * Tuned: cool white / tool-oriented / LOC-SAVE state colors
+ * Purpose: White theme variables — pure white / paper-like cool skin
+ * ---------------------------------------------------------------------------------------------
+ */
+
+:root {
+  /* Backgrounds */
+  --bg-base:    #ffffff;
+  --bg-surface: #ffffff;
+  --bg-raised:  #f2f4f7;
+  --bg-hover:   #e6e9ed;
+  --bg-active:  #d8dce2;
+
+  /* Text */
+  --tx-primary: #111111;
+  --tx-muted:   #666666;
+  --tx-dim:     #aaaaaa;
+
+  /* Accent */
+  --ac-blue:    #1a6ef5;
+  --ac-blue-bg: rgba(26,110,245,0.08);
+  --ac-blue-bd: rgba(26,110,245,0.35);
+
+  --ac-red:     #d63b3b;
+  --ac-green:   #059669;
+  --ac-amber:   #d97706;
+
+  --ac-purple:    #7c3aed;
+  --ac-purple-bg: rgba(124,58,237,0.10);
+  --ac-purple-bd: rgba(124,58,237,0.40);
+
+  /* Border */
+  --bd:         rgba(0,0,0,0.14);
+  --bd-strong:  rgba(0,0,0,0.18);
+
+  /* Shadow */
+  --sh-sm:  0 2px 8px rgba(0,0,0,0.06);
+  --sh-md:  0 8px 24px rgba(0,0,0,0.08);
+  --sh-lg:  0 16px 48px rgba(0,0,0,0.12);
+
+  /* CodeMirror */
+  --cm-bg:         #f8f9fb;
+  --cm-text:       #111111;
+  --cm-cursor:     #1a6ef5;
+  --cm-selected:   rgba(26,110,245,0.15);
+  --cm-gutter-bg:  #f8f8f8;
+  --cm-gutter-txt: #bbbbbb;
+  --cm-gutter-bd:  rgba(0,0,0,0.07);
+  --cm-activeline: rgba(26,110,245,0.08);
+
+  /* Accent helpers */
+  --ac-red-bg:     rgba(214,59,59,0.08);
+  --ac-red-bd:     rgba(214,59,59,0.30);
+
+  /* Active button state */
+  --ac-active-bg:  rgba(26,110,245,0.12);
+  --ac-active-bd:  rgba(26,110,245,0.40);
+  --ac-active-tx:  #1a6ef5;
+  --ac-green-tx:   #059669;
+
+  /* LOC / SAVE state */
+  --st-local-bd:   rgba(0,0,0,0.14);
+  --st-local-bg:   rgba(0,0,0,0.035);
+
+  --st-usekit-bd:  #059669;
+  --st-usekit-bg:  rgba(5,150,105,0.08);
+  --st-usekit-tx:  #047857;
+
+  --st-dirty-bd:   #1a6ef5;
+  --st-dirty-bg:   rgba(26,110,245,0.10);
+  --st-dirty-tx:   #1558cc;
+  --floppy-fill:   white;
+  --save-dirty:    #1a4fc8;
+  --floppy-dot:    #8a9ab0;
+
+  /* Float OFF button */
+  --float-off-bg:  rgba(50, 50, 60, 0.75);
+  --float-off-tx:  rgba(255, 255, 255, 0.95);
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * Syntax highlighting
+ * ---------------------------------------------------------------------------------------------
+ */
+
+.tok-keyword        { color: #7c3aed; }
+.tok-operator       { color: #0369a1; }
+.tok-variableName   { color: #111111; }
+.tok-string         { color: #15803d; }
+.tok-number         { color: #c2410c; }
+.tok-comment        { color: #888888; font-style: italic; }
+.tok-typeName       { color: #1d4ed8; }
+.tok-className      { color: #92400e; }
+.tok-propertyName   { color: #1d4ed8; }
+.tok-namespace      { color: #0f766e; }
+.tok-punctuation    { color: #374151; }
+.tok-literal        { color: #15803d; }
+.tok-atom           { color: #c2410c; }
+.tok-bool           { color: #c2410c; }
+.tok-meta           { color: #888888; }
+.tok-invalid        { color: #dc2626; text-decoration: underline; }
+
+/* ---------------------------------------------------------------------------------------------
+ * Header / Footer
+ * ---------------------------------------------------------------------------------------------
+ */
+
+.header-section {
+  border-bottom-color: rgba(0,0,0,0.15);
+  background: rgba(20, 20, 60, 0.10);
+}
+
+.footer-section {
+  border-top-color: rgba(0,0,0,0.15);
+  background: rgba(20, 20, 20, 0.06);
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * LOC / SAVE / STATE CHIP SYSTEM
+ * ---------------------------------------------------------------------------------------------
+ * Rule:
+ * - local  : neutral border
+ * - usekit : green border
+ * - dirty  : purple border
+ * - bg only when active
+ */
+
+/* Base */
+.loc-chip,
+.save-chip,
+.state-chip,
+.loc-box,
+.save-box,
+.state-box {
+  border: 1px solid var(--st-local-bd);
+  background: transparent;
+  color: var(--tx-primary);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+/* Default / local */
+.state-local,
+.is-local {
+  border-color: var(--st-local-bd);
+}
+
+/* Usekit */
+.state-usekit,
+.is-usekit {
+  border-color: var(--st-usekit-bd);
+}
+
+/* Dirty */
+.state-dirty,
+.is-dirty {
+  border-color: var(--st-dirty-bd);
+}
+
+/* Active only -> background */
+.is-active.state-local,
+.is-active.is-local,
+.active.state-local,
+.active.is-local {
+  background: var(--st-local-bg);
+}
+
+.is-active.state-usekit,
+.is-active.is-usekit,
+.active.state-usekit,
+.active.is-usekit {
+  background: var(--st-usekit-bg);
+  color: var(--st-usekit-tx);
+}
+
+.is-active.state-dirty,
+.is-active.is-dirty,
+.active.state-dirty,
+.active.is-dirty {
+  background: var(--st-dirty-bg);
+  color: var(--st-dirty-tx);
+}
+
+/* Optional focus ring */
+.loc-chip:focus-visible,
+.save-chip:focus-visible,
+.state-chip:focus-visible,
+.loc-box:focus-visible,
+.save-box:focus-visible,
+.state-box:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(26,110,245,0.12);
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * Optional helpers for combined states
+ * ---------------------------------------------------------------------------------------------
+ * Example:
+ *   class="loc-chip state-usekit is-active"
+ *   class="save-chip state-dirty is-active"
+ *   class="loc-chip state-local"
+ */
+
+.state-usekit.is-active,
+.is-usekit.is-active {
+  border-color: var(--st-usekit-bd);
+}
+
+.state-dirty.is-active,
+.is-dirty.is-active {
+  border-color: var(--st-dirty-bd);
+}
+
+.state-local.is-active,
+.is-local.is-active {
+  border-color: var(--st-local-bd);
+}
+/* 풋터 Save 버튼 — dirty 오버라이드 */
+#btnFooterSave.is-dirty {
+  background: transparent;
+  border-color: transparent;
+  color: var(--save-dirty, #1a4fc8);
+}
+/* 클린 상태: 플로피 흐리게 */
+#btnFooterSave:not(.is-dirty) {
+  opacity: 0.45;
+}
+
+

@@ -1,0 +1,7 @@
+examples/sql_crud_variable/
+├── README.md
+├── TREE.txt
+├── sql_crud_variable_demo.py
+└── snapshot/
+    ├── 01_output.png
+    └── 02_sql_view.png

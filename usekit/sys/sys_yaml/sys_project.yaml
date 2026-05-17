@@ -1,0 +1,8 @@
+project:
+  name: pj04
+editor:
+  host: 127.0.0.1
+  port: 7979
+  auto_bash: true
+created: '2026-05-15'
+updated: '2026-05-15'

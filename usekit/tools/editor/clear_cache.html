@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cache Clear - USEKIT Editor</title>
+    <style>
+        body {
+            background: #0b1220;
+            color: #e0eeff;
+            font-family: monospace;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .btn {
+            background: #1e2a3a;
+            border: 1px solid #3a4a5a;
+            color: #6ea8fe;
+            padding: 15px 30px;
+            margin: 10px 5px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+        }
+        .btn:hover {
+            background: #2a3a4a;
+        }
+        .log {
+            background: #1a2030;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #2a3a4a;
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+        .success { color: #6ea8fe; }
+        .error { color: #ff6b6b; }
+        h1 { color: #6ea8fe; }
+        h2 { color: #8ab4f8; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>🧹 USEKIT Editor - Cache Clear</h1>
+    
+    <h2>Step 1: Service Worker 제거</h2>
+    <button class="btn" onclick="unregisterSW()">Unregister Service Workers</button>
+    
+    <h2>Step 2: 모든 캐시 삭제</h2>
+    <button class="btn" onclick="clearAllCaches()">Clear All Caches</button>
+    
+    <h2>Step 3: 완전 초기화 (All-in-One)</h2>
+    <button class="btn" onclick="fullReset()">🔥 Full Reset + Reload</button>
+    
+    <h2>로그:</h2>
+    <div id="log" class="log">대기 중...</div>
+    
+    <hr style="border-color: #3a4a5a; margin: 30px 0;">
+    
+    <h2>에디터 열기</h2>
+    <button class="btn" onclick="location.href='./index.html?v=20260216a'">Open USEKIT Editor</button>
+    
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(msg, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : '';
+            log.innerHTML += `<span class="${className}">[${timestamp}] ${msg}</span>\n`;
+            console.log(msg);
+        }
+        
+        async function unregisterSW() {
+            log.innerHTML = '';
+            addLog('Service Worker 제거 시작...');
+            
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                addLog(`발견된 Service Worker: ${registrations.length}개`);
+                
+                for (const reg of registrations) {
+                    await reg.unregister();
+                    addLog(`✓ Service Worker 제거됨: ${reg.scope}`, 'success');
+                }
+                
+                if (registrations.length === 0) {
+                    addLog('제거할 Service Worker가 없습니다.', 'success');
+                } else {
+                    addLog('모든 Service Worker 제거 완료!', 'success');
+                }
+            } catch (err) {
+                addLog(`오류: ${err.message}`, 'error');
+            }
+        }
+        
+        async function clearAllCaches() {
+            log.innerHTML = '';
+            addLog('캐시 삭제 시작...');
+            
+            try {
+                const cacheNames = await caches.keys();
+                addLog(`발견된 캐시: ${cacheNames.length}개`);
+                
+                for (const name of cacheNames) {
+                    await caches.delete(name);
+                    addLog(`✓ 캐시 삭제됨: ${name}`, 'success');
+                }
+                
+                if (cacheNames.length === 0) {
+                    addLog('삭제할 캐시가 없습니다.', 'success');
+                } else {
+                    addLog('모든 캐시 삭제 완료!', 'success');
+                }
+            } catch (err) {
+                addLog(`오류: ${err.message}`, 'error');
+            }
+        }
+        
+        async function fullReset() {
+            log.innerHTML = '';
+            addLog('🔥 완전 초기화 시작...');
+            
+            try {
+                // 1. Service Worker 제거
+                addLog('1/3 Service Worker 제거 중...');
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const reg of registrations) {
+                    await reg.unregister();
+                }
+                addLog(`✓ ${registrations.length}개 Service Worker 제거됨`, 'success');
+                
+                // 2. 캐시 삭제
+                addLog('2/3 캐시 삭제 중...');
+                const cacheNames = await caches.keys();
+                for (const name of cacheNames) {
+                    await caches.delete(name);
+                }
+                addLog(`✓ ${cacheNames.length}개 캐시 삭제됨`, 'success');
+                
+                // 3. localStorage 정리 (선택사항 - 주석 처리)
+                // localStorage.clear();
+                // addLog('✓ localStorage 삭제됨', 'success');
+                
+                addLog('3/3 완료! 3초 후 새로고침...', 'success');
+                
+                setTimeout(() => {
+                    location.href = "./index.html?v=20260216a";
+                }, 3000);
+                
+            } catch (err) {
+                addLog(`오류: ${err.message}`, 'error');
+            }
+        }
+        
+        // 페이지 로드 시 상태 확인
+        window.addEventListener('load', async () => {
+            addLog('현재 상태 확인 중...');
+            
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                const cacheNames = await caches.keys();
+                
+                addLog(`Service Worker: ${registrations.length}개`);
+                registrations.forEach(reg => {
+                    addLog(`  - ${reg.scope}`);
+                });
+                
+                addLog(`캐시: ${cacheNames.length}개`);
+                cacheNames.forEach(name => {
+                    addLog(`  - ${name}`);
+                });
+                
+                if (registrations.length === 0 && cacheNames.length === 0) {
+                    addLog('✓ 깨끗한 상태입니다!', 'success');
+                }
+            } catch (err) {
+                addLog(`상태 확인 오류: ${err.message}`, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

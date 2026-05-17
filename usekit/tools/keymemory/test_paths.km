@@ -1,0 +1,38 @@
+# Path: usekit.tools.keymemory.test_paths.km
+# -----------------------------------------------------------------------------------------------
+#  Created by: THE Little Prince, in harmony with ROP and FOP
+#  — memory is emotion —
+# -----------------------------------------------------------------------------------------------
+
+# KeyMemory Test File
+# Test various anchor patterns and inheritance
+
+# Level 1: Root anchors
+@BASE = /content/drive/MyDrive/PROJECT
+@ROOT = /home/user/project
+
+# Level 2: Direct children
+@SRC = @BASE/src
+@DATA = @BASE/data
+@TESTS = @ROOT/tests
+
+# Level 3: Nested children
+@CORE = @SRC/core
+@UTILS = @SRC/utils
+@MODELS = @SRC/models
+
+# Level 4: Deep nesting
+@MODEL_ML = @MODELS/machine_learning
+@MODEL_DL = @MODELS/deep_learning
+@MODEL_CLS = @MODELS/classification
+
+# Format-location aliases (for future use)
+@JSON_BASE = @DATA/json/json_base
+@JSON_SUB = @DATA/json/json_sub
+@PYP_BASE = @DATA/pyp/pyp_base
+@PYP_SUB = @DATA/pyp/pyp_sub
+
+# Custom presets
+@BLUE = @BASE/myfolder/blue
+@TEMP = @BASE/workspace/temp
+@ARCHIVE = @BASE/backup/archive

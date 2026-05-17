@@ -1,0 +1,7 @@
+from .regex.ur_proxy import URProxy
+
+# ultra-short namespace
+ur = URProxy()
+
+# optional second alias
+rx = ur

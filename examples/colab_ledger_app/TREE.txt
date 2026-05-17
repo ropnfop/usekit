@@ -1,0 +1,8 @@
+examples/colab_ledger_app/
+├── README.md
+├── COLAB_CELLS.md
+├── colab_setup.py
+├── colab_run_ledger_app.py
+└── snapshot/
+    ├── 01_colab_setup.png
+    └── 02_colab_run.png
