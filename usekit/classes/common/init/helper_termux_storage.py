@@ -122,7 +122,6 @@ def setup_termux_storage(verbose: bool = True, interactive: bool = True) -> bool
     if check_storage_permission():
         if verbose:
             print("[USEKIT] ✓ External storage already accessible")
-        _register_editor_autostart(verbose=verbose)
         return True
     
     # Show explanation if verbose
@@ -184,9 +183,6 @@ def setup_termux_storage(verbose: bool = True, interactive: bool = True) -> bool
             print()
             print("="*60 + "\n")
         
-        # .bashrc 에디터 자동실행 등록
-        _register_editor_autostart(verbose=verbose)
-
         return True
         
     except subprocess.CalledProcessError as e:
@@ -264,45 +260,46 @@ def warn_if_not_ready():
     print("="*60 + "\n")
 
 
-def _register_editor_autostart(verbose: bool = True) -> None:
+def _register_editor_autostart(enable: bool = True, verbose: bool = True) -> None:
     """
-    .bashrc에 에디터 자동실행 등록 + pip install -e 실행
+    Register or unregister editor autostart in .bashrc.
+    
+    Args:
+        enable: True to register, False to unregister
+        verbose: Print status messages
     """
     bashrc = Path.home() / '.bashrc'
     autostart_line = 'nohup python -c "from usekit import u; u.editor()" > $TMPDIR/editor.log 2>&1 &'
 
-    # .bashrc 등록
-    already = False
-    if bashrc.exists():
-        content = bashrc.read_text()
-        if 'u.editor()' in content:
-            already = True
+    if enable:
+        # Register
+        already = False
+        if bashrc.exists():
+            content = bashrc.read_text()
+            if 'u.editor()' in content:
+                already = True
 
-    if not already:
-        with open(bashrc, 'a') as f:
-            f.write(f'\n{autostart_line}\n')
-        if verbose:
-            print("[USEKIT] ✓ .bashrc에 에디터 자동실행 등록 완료")
-    else:
-        if verbose:
-            print("[USEKIT] ✓ .bashrc 이미 등록됨")
-
-    # 에디터 pip install -e
-    try:
-        import usekit.tools.editor  # type: ignore
-        editor_path = Path(usekit.tools.editor.__file__).parent
-        result = subprocess.run(
-            ['pip', 'install', '-e', str(editor_path)],
-            capture_output=True, text=True
-        )
-        if result.returncode == 0:
+        if not already:
+            with open(bashrc, 'a') as f:
+                f.write(f'\n{autostart_line}\n')
             if verbose:
-                print("[USEKIT] ✓ 에디터 설치 완료")
+                print("[USEKIT] ✓ .bashrc editor autostart registered")
         else:
             if verbose:
-                print("[USEKIT] △ 에디터 설치 스킵 (이미 설치됨 또는 불필요)")
-    except Exception:
-        pass  # 에디터 경로 없으면 스킵
+                print("[USEKIT] ✓ .bashrc already configured")
+    else:
+        # Unregister
+        if bashrc.exists():
+            content = bashrc.read_text()
+            if 'u.editor()' in content:
+                lines = content.splitlines(keepends=True)
+                lines = [l for l in lines if 'u.editor()' not in l]
+                bashrc.write_text(''.join(lines))
+                if verbose:
+                    print("[USEKIT] ✓ .bashrc editor autostart removed")
+            else:
+                if verbose:
+                    print("[USEKIT] ✓ .bashrc autostart not set (nothing to remove)")
 
 
 # Convenience function for use.py

@@ -11,6 +11,7 @@ from functools import partialmethod
 
 from usekit.classes.common.errors.helper_debug import log_and_raise
 from usekit.classes.common.utils.helper_const import get_const
+from usekit.infra.params_value import normalize_value_params
 
 # Import operations
 from usekit.classes.navi.base.load.ops.nbl_a_index_ops import (
@@ -41,6 +42,96 @@ class NaviLd:
         self.debug_mode = bool(get_const(f"DEBUG_OPTIONS.{self.fmt}")) if debug is None else bool(debug)
 
     # ----------------------------------------------------------------
+    # Internal: common normalization (like ExecLd/DataLd._normalize_common)
+    # ----------------------------------------------------------------
+
+    def _normalize_common(
+        self,
+        name: Optional[str],
+        *,
+        dir_path: Optional[str] = None,
+        loc: Optional[Loc] = None,
+        cus: Optional[str] = None,
+        debug: bool = False,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """
+        Normalize name expression for NAVI layer.
+
+        Applies normalize_value_params to support:
+        - Dot path: "test.test01" → dir_path="test", name="test01"
+        - Inline codes: "@jb.data" → ov_fmt="json", ov_loc="base"
+        - @alias resolution: "@card.math_001" → km lookup → dir_path + name
+
+        @alias MUST resolve. If km file or alias is missing, error is raised.
+        """
+        # --- Step 0: @alias → KM resolve (BEFORE normalize_value_params) ---
+        if isinstance(name, str) and name.startswith("@"):
+            from usekit.classes.common.utils.helper_km_system import resolve_km_alias
+
+            body = name[1:]
+            parts = body.split(".", 1)
+            alias = parts[0]
+            rest = parts[1] if len(parts) > 1 else ""
+
+            effective_loc = loc or "base"
+
+            km_result = resolve_km_alias(
+                alias, rest, self.fmt, effective_loc, debug=debug,
+            )
+
+            # --- Group binding ---
+            if km_result.get("is_group"):
+                result = {
+                    "dir_paths": km_result.get("dir_paths"),
+                    "name": km_result.get("name"),
+                    "is_group": True,
+                }
+                if debug:
+                    print("[NAVI-LOADER] _normalize_common() [KM-GROUP]")
+                    print(f"  input     = {name!r}")
+                    print(f"  dir_paths = {result['dir_paths']}")
+                    print(f"  name      = {result['name']!r}")
+                return result
+
+            # --- Single alias ---
+            result = {
+                "name": km_result.get("name"),
+                "dir_path": km_result.get("dir_path"),
+            }
+            if debug:
+                print("[NAVI-LOADER] _normalize_common() [KM]")
+                print(f"  input     = {name!r}")
+                print(f"  name      = {result['name']!r}")
+                print(f"  dir_path  = {result['dir_path']!r}")
+            return result
+
+        # --- Step 1: Standard normalize_value_params ---
+        norm_kwargs: dict[str, Any] = {
+            "fmt": self.fmt,
+            "loc": loc,
+            "cus": cus,
+            "dir_path": dir_path,
+            **kwargs,
+        }
+        norm_kwargs = {k: v for k, v in norm_kwargs.items() if v is not None}
+
+        params = normalize_value_params(name, **norm_kwargs)
+
+        if debug:
+            print("[NAVI-LOADER] _normalize_common()")
+            print(f"  input     = {name!r}")
+            print(f"  name      = {params.get('name')!r}")
+            print(f"  dir_path  = {params.get('dir_path')!r}")
+            if params.get("ov_fmt") or params.get("ov_loc"):
+                print(
+                    f"  override  = fmt={params.get('ov_fmt')!r}, "
+                    f"loc={params.get('ov_loc')!r}"
+                )
+
+        return params
+
+    # ----------------------------------------------------------------
     # Delegated Operations
     # ----------------------------------------------------------------
 
@@ -63,10 +154,42 @@ class NaviLd:
         
         Examples:
             >>> loader.path(name="config")
-            >>> loader.path(name="user_*")  # [NEW] pattern
-            >>> loader.path(name="%test%", keydata="email")
+            >>> loader.path(name="test.test01")  # dot path
+            >>> loader.path(name="user_*")  # pattern
         """
         mod = mod or "all"
+        debug = kwargs.pop('debug', self.debug_mode)
+
+        # --- Normalize name expression ---
+        if name and isinstance(name, str) and ('.' in name or name.startswith('@')):
+            params = self._normalize_common(
+                name, dir_path=dir_path, loc=loc, cus=cus, debug=debug,
+            )
+
+            # --- Group binding: return paths from all directories ---
+            if params.get("is_group"):
+                all_paths = []
+                for dp in params["dir_paths"]:
+                    try:
+                        r = path_operation(
+                            fmt=self.fmt, name=params.get("name"), mod=mod,
+                            dir_path=dp, loc=loc, cus=cus, keydata=keydata,
+                            default=None, recursive=recursive, find_all=find_all,
+                            debug=debug, **kwargs,
+                        )
+                        if r:
+                            if isinstance(r, list):
+                                all_paths.extend(r)
+                            else:
+                                all_paths.append(r)
+                    except Exception:
+                        continue
+                return all_paths if all_paths else default
+
+            name = params.get("name", name)
+            dir_path = params.get("dir_path", dir_path)
+            if params.get("ov_loc"):
+                loc = params["ov_loc"]
 
         return path_operation(
             fmt=self.fmt,
@@ -79,7 +202,7 @@ class NaviLd:
             default=default,
             recursive=recursive,
             find_all=find_all,
-            debug=self.debug_mode,
+            debug=debug,
             **kwargs
         )
 
@@ -98,6 +221,38 @@ class NaviLd:
     ) -> Optional[Path]:
         """find operation"""
         mod = mod or "all"
+        debug = kwargs.pop('debug', self.debug_mode)
+
+        # --- Normalize name expression ---
+        if name and isinstance(name, str) and ('.' in name or name.startswith('@')):
+            params = self._normalize_common(
+                name, dir_path=dir_path, loc=loc, cus=cus, debug=debug,
+            )
+
+            # --- Group binding: collect from all dirs ---
+            if params.get("is_group"):
+                all_found = []
+                for dp in params["dir_paths"]:
+                    try:
+                        r = find_operation(
+                            fmt=self.fmt, name=params.get("name"), mod=mod,
+                            dir_path=dp, loc=loc, cus=cus, keydata=keydata,
+                            create_missing=create_missing, recursive=recursive,
+                            debug=debug, **kwargs,
+                        )
+                        if r:
+                            if isinstance(r, list):
+                                all_found.extend(r)
+                            else:
+                                all_found.append(r)
+                    except Exception:
+                        continue
+                return all_found if all_found else None
+
+            name = params.get("name", name)
+            dir_path = params.get("dir_path", dir_path)
+            if params.get("ov_loc"):
+                loc = params["ov_loc"]
 
         return find_operation(
             fmt=self.fmt,
@@ -109,7 +264,7 @@ class NaviLd:
             keydata=keydata,
             create_missing=create_missing,
             recursive=recursive,
-            debug=self.debug_mode,
+            debug=debug,
             **kwargs
         )
 
@@ -128,6 +283,38 @@ class NaviLd:
     ) -> Optional[Path]:
         """list operation"""
         mod = mod or "all"
+        debug = kwargs.pop('debug', self.debug_mode)
+
+        # --- Normalize name expression ---
+        if name and isinstance(name, str) and ('.' in name or name.startswith('@')):
+            params = self._normalize_common(
+                name, dir_path=dir_path, loc=loc, cus=cus, debug=debug,
+            )
+
+            # --- Group binding: list from all directories ---
+            if params.get("is_group"):
+                all_items = []
+                for dp in params["dir_paths"]:
+                    try:
+                        r = list_operation(
+                            fmt=self.fmt, name=params.get("name"), mod=mod,
+                            dir_path=dp, loc=loc, cus=cus, keydata=keydata,
+                            create_missing=create_missing, recursive=recursive,
+                            debug=debug, **kwargs,
+                        )
+                        if r:
+                            if isinstance(r, list):
+                                all_items.extend(r)
+                            else:
+                                all_items.append(r)
+                    except Exception:
+                        continue
+                return all_items if all_items else None
+
+            name = params.get("name", name)
+            dir_path = params.get("dir_path", dir_path)
+            if params.get("ov_loc"):
+                loc = params["ov_loc"]
 
         return list_operation(
             fmt=self.fmt,
@@ -139,7 +326,7 @@ class NaviLd:
             keydata=keydata,
             create_missing=create_missing,
             recursive=recursive,
-            debug=self.debug_mode,
+            debug=debug,
             **kwargs
         )
 
@@ -157,6 +344,34 @@ class NaviLd:
     ) -> Optional[Path]:
         """get operation"""
         mod = mod or "all"
+        debug = kwargs.pop('debug', self.debug_mode)
+
+        # --- Normalize name expression ---
+        if name and isinstance(name, str) and ('.' in name or name.startswith('@')):
+            params = self._normalize_common(
+                name, dir_path=dir_path, loc=loc, cus=cus, debug=debug,
+            )
+
+            # --- Group binding: get from all directories ---
+            if params.get("is_group"):
+                all_results = []
+                for dp in params["dir_paths"]:
+                    try:
+                        r = get_operation(
+                            fmt=self.fmt, name=params.get("name"), mod=mod,
+                            dir_path=dp, loc=loc, cus=cus, keydata=keydata,
+                            recursive=recursive, debug=debug, **kwargs,
+                        )
+                        if r is not None:
+                            all_results.append(r)
+                    except Exception:
+                        continue
+                return all_results if all_results else None
+
+            name = params.get("name", name)
+            dir_path = params.get("dir_path", dir_path)
+            if params.get("ov_loc"):
+                loc = params["ov_loc"]
 
         return get_operation(
             fmt=self.fmt,
@@ -167,7 +382,7 @@ class NaviLd:
             cus=cus,
             keydata=keydata,
             recursive=recursive,
-            debug=self.debug_mode,
+            debug=debug,
             **kwargs
         )
 
@@ -186,6 +401,26 @@ class NaviLd:
     ) -> bool:
         """set check with pattern support"""
         mod = mod or "all"
+        debug = kwargs.pop('debug', self.debug_mode)
+
+        # --- Normalize name expression ---
+        if name and isinstance(name, str) and ('.' in name or name.startswith('@')):
+            params = self._normalize_common(
+                name, dir_path=dir_path, loc=loc, cus=cus, debug=debug,
+            )
+
+            # --- Group binding blocked for set (write-type operation) ---
+            if params.get("is_group"):
+                alias = name[1:].split(".")[0] if name.startswith("@") else name
+                raise ValueError(
+                    f"Group alias '@{alias}' cannot be used for set. "
+                    f"Use a single alias instead."
+                )
+
+            name = params.get("name", name)
+            dir_path = params.get("dir_path", dir_path)
+            if params.get("ov_loc"):
+                loc = params["ov_loc"]
 
         return set_operation(
             fmt=self.fmt,
@@ -198,7 +433,7 @@ class NaviLd:
             cus=cus,
             keydata=keydata,
             recursive=recursive,
-            debug=self.debug_mode,
+            debug=debug,
             **kwargs
         )
 

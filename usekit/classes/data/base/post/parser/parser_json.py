@@ -581,6 +581,7 @@ def dumps(
     separators = None,
     wrap: bool = True,  # ✅ Changed default to True
     jsonl: bool = False,
+    compact: bool = False,
     **kwargs
 ) -> str:
     """
@@ -594,6 +595,7 @@ def dumps(
         separators: Custom separators tuple
         wrap: Auto-wrap simple values (default: True)
         jsonl: Return as single-line JSON with trailing newline
+        compact: Zero whitespace mode — no indent, minimal separators
         **kwargs: Additional json.dumps options
     
     Returns:
@@ -603,12 +605,17 @@ def dumps(
         >>> dumps("status:active")
         '{\n  "status": "active"\n}'
         
-        >>> dumps({"key": "value"}, indent=None)
-        '{"key": "value"}'
+        >>> dumps({"key": "value"}, compact=True)
+        '{"key":"value"}'
         
         >>> dumps({"event": "login"}, jsonl=True)
         '{"event": "login"}\n'
     """
+    # Compact mode: zero whitespace, minimal tokens
+    if compact:
+        indent = None
+        separators = (",", ":")
+
     # Apply wrap transformation
     data = _wrap_if_needed(data, wrap)
     

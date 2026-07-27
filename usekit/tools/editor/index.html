@@ -49,7 +49,7 @@
     <!-- eruda debug console (enable via Settings > DEBUG) -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/eruda"></script> -->
     <!-- <script>eruda.init();</script> -->
-    <script src="cm6.bundle.js?v=0.2.0"></script>
+    <script src="cm6.bundle.js?v=0.3.0"></script>
 
 </head>
 <body>
@@ -98,6 +98,8 @@
             <main class="editor-section">
                 <div id="cliBadge" style="display:none;position:absolute;top:6px;left:8px;z-index:50;padding:2px 10px 2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;letter-spacing:0.04em;color:#1c1812;background:linear-gradient(135deg,#e8b15a,#d09028);pointer-events:none;opacity:0.92;">usekit&gt;</div>
                 <div id="editor-host"></div>
+                <!-- AI 첨부 프리뷰 바 (첨부 있을 때만 표시) -->
+                <div id="aiAttachPreview" style="display:none;"></div>
             </main>
            
             <div class="action-nav-wrapper">
@@ -115,7 +117,7 @@
                             <button id="btnCopy" class="btn" style="display:none;">copy</button>
                             <button id="btnPaste" class="btn" style="display:none;">paste</button>
                             <button id="btnMenuTool" class="btn">menu</button>
-                            <button id="btnCopyTool" class="btn">clip</button>
+                            <button id="btnCopyTool" class="btn">EDIT</button>
                             <button id="btnRunTool" class="btn">run</button>
                             <button id="btnSqlView" class="btn">sql</button>
                         </div>
@@ -363,11 +365,28 @@
                     </div>
 
                     <div class="settings-section">
+                        <div class="settings-section-label">Autostart</div>
+                        <div class="settings-row">
+                            <span style="min-width:3rem; font-size:0.78rem; opacity:0.6;">Editor on Termux launch</span>
+                            <button class="settings-layout-btn" id="btnAutostartOn"  data-autostart="on">On</button>
+                            <button class="settings-layout-btn" id="btnAutostartOff" data-autostart="off">Off</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
                         <div class="settings-section-label">Debug</div>
                         <div class="settings-row">
                             <button class="settings-layout-btn" id="btnDebugOn"  data-debug="on">On</button>
                             <button class="settings-layout-btn" id="btnDebugOff" data-debug="off">Off</button>
                         </div>
+                    </div>
+
+                    <div class="settings-section settings-section-danger">
+                        <div class="settings-section-label">Storage</div>
+                        <div class="settings-row">
+                            <button class="settings-danger-btn" id="btnClearStorage">Clear All Storage</button>
+                        </div>
+                        <div class="settings-danger-desc">Remove all saved settings &amp; slot data</div>
                     </div>
 
                 </div>
@@ -678,6 +697,44 @@
             </div>
         </div>
     </div>
+    <!-- Memory Editor (A0: empty shell; structure cloned from #loadModal) -->
+    <div id="memEditModal" class="modal-overlay" aria-hidden="true" style="display:none;">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="memEditTitle">
+            <div class="modal-header">
+                <div class="modal-header-left">
+                    <div class="modal-title-row">
+                        <div id="memEditTitle" class="modal-title">Memory Editor</div>
+                        <div id="memEditCount" class="modal-count"></div>
+                    </div>
+                    <div id="memEditPath" class="modal-path"></div>
+                </div>
+                <div class="modal-header-right">
+                    <button id="btnMemEditClose" class="modal-close" aria-label="Close">×</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-tabs" id="memEditTabs">
+                    <button class="modal-tab active" data-zone="linked" id="memEditTabLinked">LINKED</button>
+                    <button class="modal-tab" data-zone="orphan" id="memEditTabOrphan">ORPHAN</button>
+                    <button class="modal-tab" data-zone="temp" id="memEditTabTemp">TEMP</button>
+                </div>
+                <input id="memEditSearch" class="modal-search" type="text" placeholder="search title / model / slot..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                <div class="load-filter-row" id="memEditSortRow">
+                    <div class="load-sort-group">
+                        <button class="load-sort-btn active" data-msort="latest">Latest</button>
+                        <button class="load-sort-btn" data-msort="oldest">Oldest</button>
+                        <button class="load-sort-btn" data-msort="az">A-Z</button>
+                        <button class="load-sort-btn" data-msort="turns">Turns</button>
+                    </div>
+                </div>
+                <div id="memEditTurnHead" style="display:none;"></div>
+                <div id="memEditList" class="modal-list" role="listbox" aria-label="Sessions"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnMemEditCancel" class="modal-btn">Close</button>
+            </div>
+        </div>
+    </div>
     <div id="saveModal" class="modal-overlay" aria-hidden="true" style="display:none;">
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="saveModalTitle">
             <div class="modal-header">
@@ -963,7 +1020,7 @@
       };
     </script>
     <script>
-      const DEV_MODE = false; // 🔧 개발 중: true | 배포 시: false
+      const DEV_MODE = true; // 🔧 개발 중: true | 배포 시: false
       window._BUILD_VER = '0.2.0'; // theme href 버전쿼리용 (v0.2.0)
 
       if (!DEV_MODE && 'serviceWorker' in navigator) {
@@ -1050,32 +1107,240 @@ document.addEventListener('DOMContentLoaded', () => {
   </button>
 </div>
 
+<!-- ───────────────────────────────────────────────────────
+     FLOAT AI CHAT  (Run | Think | + | ▾)
+     chat 모드에서만 표시. RUN pill과 교대.
+─────────────────────────────────────────────────────── -->
+<div id="floatAiTool" style="display:none !important;">
+  <button id="floatAiRun" class="fb">
+    <span class="fb-icon">▶</span>
+    <span class="fb-label">Run</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatAiThink" class="fb">
+    <span class="fb-icon">◎</span>
+    <span class="fb-label" id="floatAiThinkLabel">Think</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatAiAttach" class="fb">
+    <span class="fb-icon">＋</span>
+    <span class="fb-label">Add</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatAiModel" class="fb">
+    <span class="fb-icon">▾</span>
+    <span class="fb-label" id="floatAiModelLabel">auto</span>
+  </button>
+  <div class="fb-div"></div>
+  <button id="floatAiOpt" class="fb">
+    <span class="fb-icon">⚙</span>
+    <span class="fb-label">Opt</span>
+  </button>
+</div>
+
+<!-- AI 모델 선택 — 좌측 슬라이드 시트 (Settings 패턴 재사용) -->
+<div id="floatAiModelPanel" class="model-sheet" aria-hidden="true">
+  <div class="model-sheet-overlay" id="floatAiModelOverlay"></div>
+  <div class="model-sheet-drawer">
+    <div class="model-sheet-header">
+      <span class="model-sheet-title">AI <span id="aiSheetCurrent" style="font-weight:400;opacity:0.6;font-size:0.85em;"></span></span>
+      <button class="model-sheet-close float-panel-close" data-panel="floatAiModelPanel">✕</button>
+    </div>
+    <div id="floatAiModelList" class="ai-model-list">
+      <!-- Populated dynamically. Falls back to static markup on /api/ai_meta failure. -->
+      <div class="ai-model-loading" style="padding:0.6rem 1rem;color:#666;font-size:0.85em;">Loading…</div>
+    </div>
+    <div class="ai-sheet-opts" id="floatAiSheetOpts">
+      <div class="aop-head" id="aiOptFoldHead" style="margin:10px 0 4px;padding:4px 10px;border-bottom:1px solid #2d333b;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;color:#a78bfa;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:6px;"><span class="fold-arrow" id="aiOptFoldArrow">▸</span>Options</div>
+      <div id="aiOptFold" style="display:none;">
+      <div class="aop-section">
+        <button id="aiOptContinue" class="aop-btn"><span class="aop-icon" style="color:#7ee787;">↩</span><span>Continue</span><span class="aop-tag" id="aiOptContTag">OFF</span></button>
+      </div>
+      <div class="aop-divider"></div>
+      <div class="aop-section">
+        <div class="aop-label">MAX TOKENS</div>
+        <div class="aop-chips" id="aiOptTokenGroup">
+          <button class="ai-opt-chip" data-tokens="512">512</button>
+          <button class="ai-opt-chip" data-tokens="1024">1K</button>
+          <button class="ai-opt-chip is-active" data-tokens="2048">2K</button>
+          <button class="ai-opt-chip" data-tokens="4096">4K</button>
+          <button class="ai-opt-chip" data-tokens="8192">8K</button>
+          <button class="ai-opt-chip" data-tokens="16384">16K</button>
+          <button class="ai-opt-chip" data-tokens="32768">32K</button>
+          <button class="ai-opt-chip" data-tokens="65536">64K</button>
+          <button class="ai-opt-chip" data-tokens="131072">128K</button>
+        </div>
+      </div>
+      <div class="aop-divider"></div>
+      <div class="aop-section">
+        <div class="aop-label">TEMPERATURE</div>
+        <div class="aop-chips" id="aiOptTempGroup">
+          <button class="ai-opt-chip" data-temp="0">0</button>
+          <button class="ai-opt-chip" data-temp="0.3">0.3</button>
+          <button class="ai-opt-chip is-active" data-temp="0.7">0.7</button>
+          <button class="ai-opt-chip" data-temp="1.0">1.0</button>
+        </div>
+      </div>
+      <div class="aop-divider" id="aiOptWorkerDivider"></div>
+      <div class="aop-section" id="aiOptWorkerSection">
+        <!-- WORKERS: 1 = single (fast, 1 LLM call). >=2 = parallel pipeline. -->
+        <div class="aop-label">WORKERS</div>
+        <div class="aop-chips" id="aiOptWorkerGroup">
+          <button class="ai-opt-chip is-active" data-workers="1">1</button>
+          <button class="ai-opt-chip" data-workers="2">2</button>
+          <button class="ai-opt-chip" data-workers="3">3</button>
+        </div>
+      </div>
+      </div><!-- /#aiOptFold -->
+      <div class="aop-divider"></div>
+      <div class="aop-divider"></div>
+      <div class="aop-section" id="metaSection">
+        <div class="aop-label" id="metaFoldHead" style="color:#a78bfa;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;cursor:pointer;display:flex;align-items:center;gap:6px;"><span class="fold-arrow" id="metaFoldArrow">▸</span>META</div>
+        <div id="metaFold" style="display:none;">
+        <!-- Master toggle: OFF = no meta injected at all (overrides section checks). -->
+        <button id="aiOptProjMeta" class="aop-btn"><span class="aop-icon" style="color:#79c0ff;">◳</span><span>General USEKIT Project</span><span class="aop-tag" id="aiOptProjMetaTag">OFF</span></button>
+
+        <!-- Section cards: each = check(inject on/off) + expand(edit body).
+             Project/User/Meta → system ; Request → user prefix. -->
+        <div class="meta-cards" id="metaCards">
+          <div class="meta-card" data-sec="Project">
+            <div class="meta-card-head">
+              <button class="meta-chk" data-sec="Project" aria-label="toggle Project">▢</button>
+              <span class="meta-name">Project</span>
+              <span class="meta-dest">system</span>
+              <span class="meta-exp" aria-hidden="true">▸</span>
+              <button class="meta-edit" data-sec="Project">edit</button>
+            </div>
+            <div class="meta-preview" data-sec="Project" style="display:none;"></div>
+          </div>
+          <div class="meta-card" data-sec="User">
+            <div class="meta-card-head">
+              <button class="meta-chk" data-sec="User" aria-label="toggle User">▢</button>
+              <span class="meta-name">User</span>
+              <span class="meta-dest">system</span>
+              <span class="meta-exp" aria-hidden="true">▸</span>
+              <button class="meta-edit" data-sec="User">edit</button>
+            </div>
+            <div class="meta-preview" data-sec="User" style="display:none;"></div>
+          </div>
+          <div class="meta-card" data-sec="Meta">
+            <div class="meta-card-head">
+              <button class="meta-chk" data-sec="Meta" aria-label="toggle Meta">▢</button>
+              <span class="meta-name">Meta</span>
+              <span class="meta-dest">system</span>
+              <span class="meta-exp" aria-hidden="true">▸</span>
+              <button class="meta-edit" data-sec="Meta">edit</button>
+            </div>
+            <div class="meta-preview" data-sec="Meta" style="display:none;"></div>
+          </div>
+          <div class="meta-card" data-sec="Request">
+            <div class="meta-card-head">
+              <button class="meta-chk" data-sec="Request" aria-label="toggle Request">▢</button>
+              <span class="meta-name">Request</span>
+              <span class="meta-dest">user prefix</span>
+              <span class="meta-exp" aria-hidden="true">▸</span>
+              <button class="meta-edit" data-sec="Request">edit</button>
+            </div>
+            <div class="meta-hint">Injected before the current user message. Keep it off for normal chat.</div>
+            <div class="meta-preview" data-sec="Request" style="display:none;"></div>
+          </div>
+        </div>
+        <div class="meta-actions">
+          <button class="meta-btn meta-reset" id="metaReset">Reset Default</button>
+          <button class="meta-btn meta-save" id="metaSnapshot">Save</button>
+          <button class="meta-btn meta-save" id="metaLoad">Load</button>
+        </div>
+        </div><!-- /#metaFold -->
+      </div>
+      <div class="ai-active-badge" id="aiActiveBadge">
+        <span class="ai-active-dot" id="aiActiveDot"></span>
+        <span class="ai-active-text">
+          <span class="ai-active-model" id="aiActiveModel">—</span>
+          <span class="ai-active-sub" id="aiActiveSub"></span>
+        </span>
+        <button class="ai-active-ping" id="aiActivePing" title="ping current model" style="margin-left:auto;background:none;border:1px solid #30363d;border-radius:6px;color:#768390;cursor:pointer;font-size:0.66rem;letter-spacing:0.06em;padding:4px 9px;">PING</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Opt 시트는 모델 시트(AI)로 통합됨 — 빈 컨테이너만 유지(호환용) -->
+<div id="floatAiOptPanel" class="ai-sheet" aria-hidden="true" style="display:none;"></div>
+
+<!-- META 섹션 큰 편집 오버레이 (카드 탭 시) -->
+<div id="metaEditModal" class="me-modal" aria-hidden="true" style="display:none;">
+  <div class="me-backdrop" id="meBackdrop"></div>
+  <div class="me-dialog" role="dialog" aria-label="Edit section">
+    <div class="me-head">
+      <span class="me-title" id="meTitle">Section</span>
+      <span class="me-dest" id="meDest">system</span>
+      <button class="me-x" id="meCancel" title="cancel">✕</button>
+    </div>
+    <div class="me-hint" id="meHint"></div>
+    <textarea id="meText" class="me-text" spellcheck="false"></textarea>
+    <div class="me-actions">
+      <button class="me-btn me-cancel" id="meCancel2">Cancel</button>
+      <button class="me-btn me-done" id="meDone">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI 첨부 선택 드롭업 -->
+<div id="floatAiAttachPanel">
+  <div class="tp-header"><span>Attach</span><button class="float-panel-close" data-panel="floatAiAttachPanel">✕</button></div>
+  <button id="aiAttachSlot" class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon">📋</span> Slot</button>
+  <button id="aiAttachFile" class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon">📄</span> File</button>
+  <button id="aiAttachImage" class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon">📷</span> Image</button>
+  <input type="file" id="aiFileInput" accept=".txt,.py,.js,.json,.csv,.md,.html,.css,.yaml,.yml,.toml,.cfg,.ini,.xml,.sh,.bat,.log,.sql" style="display:none;">
+  <input type="file" id="aiImageInput" accept="image/*" style="display:none;">
+</div>
+
+<!-- 🎙 음성 옵션 팝오버 — 🎙 칩 탭하면 열림 -->
+<div id="floatAiVoicePanel">
+  <div class="tp-header"><span>음성</span><button class="float-panel-close" data-panel="floatAiVoicePanel">✕</button></div>
+  <button id="aiVoiceDictate" class="aop-btn" style="padding:0.45rem 0.9rem;"><span class="aop-icon">🎤</span><span>음성입력</span><span class="aop-tag">→ 입력창</span></button>
+  <button id="aiVoiceTalk" class="aop-btn" style="padding:0.45rem 0.9rem;"><span class="aop-icon">📞</span><span>음성대화</span><span class="aop-tag" id="aiVoiceTalkTag">OFF</span></button>
+  <button id="aiVoiceRead" class="aop-btn" style="padding:0.45rem 0.9rem;"><span class="aop-icon">🔊</span><span>자동읽기</span><span class="aop-tag" id="aiVoiceReadTag">OFF</span></button>
+  <div style="height:1px;background:rgba(255,255,255,0.08);margin:0.3rem 0.6rem;"></div>
+  <button id="aiVoiceAiTts" class="aop-btn" style="padding:0.45rem 0.9rem;"><span class="aop-icon" style="color:#f0a868;">✨</span><span>AI 음성<span style="opacity:0.5;font-size:0.7rem;"> 고품질·토큰소모</span></span><span class="aop-tag" id="aiVoiceAiTtsTag">OFF</span></button>
+</div>
+<!-- voice panel: 자동읽기는 기본 브라우저 TTS(무료). AI 음성 ON이면 Gemini TTS(고품질·토큰) -->
+
 <!-- Tool 메뉴 패널 -->
 <div id="floatToolPanel">
-  <div class="tp-header"><span>Run Tool</span><button class="float-panel-close" data-panel="floatToolPanel">✕</button></div>
+  <div class="tp-header"><span id="floatTpTitle">Run Tool</span><button class="float-panel-close" data-panel="floatToolPanel">✕</button></div>
 
-  <!-- ▾ RUN 그룹 (기본 펼침) -->
-  <button id="floatTpRunToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#7BA8D9;">▸</span> <span class="tp-grp-label" style="color:#7BA8D9;">Run</span><span id="floatTpRunArrow" style="margin-left:auto;opacity:0.4;color:#7BA8D9;">▴</span></button>
-  <div id="floatTpRunSection" style="display:block;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
-    <button id="floatTpRun"   class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#3fb950;">▶</span> Live<span id="floatTpLiveDot" style="display:none;color:#3fb950;margin-left:0.4em;font-size:0.6em;">●</span></button>
-    <button id="floatTpPrint" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">🖨</span> Eval</button>
-    <button id="floatTpLine"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">⤳</span> Line</button>
-    <button id="floatTpBlock" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">▣</span> Block</button>
-    <button id="floatTpFileTmp" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">📄</span> File</button>
-    <div class="tp-sep" style="margin:2px 0.8rem;"></div>
-    <button id="floatTpResetRepl" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">⟲</span> Reset</button>
-    <div class="tp-sep" style="margin:2px 0.8rem;"></div>
-    <button id="floatTpCli" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#d09028;">⌘</span> <span id="floatTpCliLabel">CLI</span></button>
+  <!-- ═══ EDIT MODE 섹션 (챗모드에서 숨김) ═══ -->
+  <div id="floatTpEditGroup">
+    <!-- ▾ RUN 그룹 (기본 펼침) -->
+    <button id="floatTpRunToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#7BA8D9;">▸</span> <span class="tp-grp-label" style="color:#7BA8D9;">Run</span><span id="floatTpRunArrow" style="margin-left:auto;opacity:0.4;color:#7BA8D9;">▴</span></button>
+    <div id="floatTpRunSection" style="display:block;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
+      <button id="floatTpRun"   class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#3fb950;">▶</span> Live<span id="floatTpLiveDot" style="display:none;color:#3fb950;margin-left:0.4em;font-size:0.6em;">●</span></button>
+      <button id="floatTpPrint" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">🖨</span> Eval</button>
+      <button id="floatTpLine"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">⤳</span> Line</button>
+      <button id="floatTpBlock" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">▣</span> Block</button>
+      <button id="floatTpFileTmp" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">📄</span> File</button>
+      <div class="tp-sep" style="margin:2px 0.8rem;"></div>
+      <button id="floatTpResetRepl" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">⟲</span> Reset</button>
+      <button id="floatTpReload" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#58a6ff;">⟳</span> Reload</button>
+    </div>
+  </div>
+
+  <!-- ═══ CHAT MODE 섹션 (에디트모드에서 숨김) ═══ -->
+  <div id="floatTpChatGroup" style="display:none;">
+    <button id="floatTpThink" class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon" style="color:#a78bfa;">◎</span> <span id="floatTpThinkLabel">Think</span></button>
+    <button id="floatTpAdd"   class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon" style="color:#7ee787;">＋</span> Add</button>
+    <button id="floatTpModel" class="tp-btn" style="padding-left:1.2rem;"><span class="tp-icon" style="color:#58a6ff;">▾</span> <span id="floatTpModelLabel">auto</span></button>
   </div>
 
   <div class="tp-sep"></div>
 
-  <!-- ▸ EDIT 그룹 (기본 접힘) -->
-  <button id="floatTpEditToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#94A3B8;">▸</span> <span class="tp-grp-label" style="color:#94A3B8;">Edit</span><span id="floatTpEditArrow" style="margin-left:auto;opacity:0.4;color:#94A3B8;">▾</span></button>
-  <div id="floatTpEditSection" style="display:none;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
-    <button id="floatTpCaseTransform"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">Aa</span> Case transform</button>
-    <button id="floatTpTabToSpace"     class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">→␣</span> Tab → Space</button>
-    <button id="floatTpTrimTrailing"   class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon">␣✕</span> Trim trailing</button>
+  <!-- ▸ MODE 그룹 (기본 접힘) -->
+  <button id="floatTpModeToggle" class="tp-btn tp-grp-toggle"><span class="tp-icon tp-grp-chevron" style="color:#94A3B8;">▸</span> <span class="tp-grp-label" style="color:#94A3B8;">Mode</span><span id="floatTpModeArrow" style="margin-left:auto;opacity:0.4;color:#94A3B8;">▾</span></button>
+  <div id="floatTpModeSection" style="display:none;border-left:1px solid rgba(123,168,217,0.25);margin-left:0.5rem;">
+    <button id="floatTpShell" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#58d68d;">⟩</span> <span id="floatTpShellLabel">Shell</span></button>
+    <button id="floatTpCli" class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#d09028;">⌘</span> <span id="floatTpCliLabel">USEKIT</span></button>
+    <button id="floatTpAi"  class="tp-btn" style="padding-left:1.8rem;"><span class="tp-icon" style="color:#a78bfa;">◆</span> <span id="floatTpAiLabel">AI</span></button>
   </div>
 
   <div class="tp-sep"></div>
@@ -1157,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 
 <!-- ═════════════════════════════════════════════════════════════
-     CLIPBOARD pill — 3버튼 (COPY/ALL/TOOL), 민트 테마
+     EDIT pill — 3버튼 (COPY/PASTE/TOOL), 민트 테마
      트리거: 퀵메뉴 CTRL 활성 상태에서 TAB 탭 → 토글
      버튼 동작: 기존 키패드 버튼에 .click() forward
 ══════════════════════════════════════════════════════════════ -->
@@ -1178,9 +1443,9 @@ document.addEventListener('DOMContentLoaded', () => {
   </button>
 </div>
 
-<!-- Clipboard TOOL 메뉴 팝업 (민트 테마) -->
+<!-- EDIT TOOL 메뉴 팝업 (민트 테마) -->
 <div id="floatClipToolPanel">
-  <div class="ctp-header"><span>Copy Tool</span><button class="float-panel-close" data-panel="floatClipToolPanel">✕</button></div>
+  <div class="ctp-header"><span>EDIT TOOL</span><button class="float-panel-close" data-panel="floatClipToolPanel">✕</button></div>
 
   <!-- ▾ CLIPBOARD 그룹 (기본 펼침) -->
   <button id="floatCtpClipToggle" class="ctp-btn ctp-grp-toggle"><span class="ctp-icon">▸</span> <span>Clipboard</span><span id="floatCtpClipArrow" style="margin-left:auto;opacity:0.5;">▴</span></button>
@@ -1192,7 +1457,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   <div class="ctp-sep"></div>
 
-  <!-- ▸ MENU 그룹 (기본 접힘) — pill 간 전환은 Menu pill(허브)로 일원화 -->
+  <!-- ▾ EDIT 그룹 (기본 접힘) -->
+  <button id="floatCtpEditToggle" class="ctp-btn ctp-grp-toggle"><span class="ctp-icon">▸</span> <span>Edit</span><span id="floatCtpEditArrow" style="margin-left:auto;opacity:0.5;">▾</span></button>
+  <div id="floatCtpEditSection" style="display:none;">
+    <button id="floatCtpCaseTransform"  class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">Aa</span> Case transform</button>
+    <button id="floatCtpTabToSpace"     class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">→␣</span> Tab → Space</button>
+    <button id="floatCtpTrimTrailing"   class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon">␣✕</span> Trim trailing</button>
+  </div>
+
+  <div class="ctp-sep"></div>
+
+  <!-- ▸ MENU 그룹 (기본 접힘) -->
   <button id="floatCtpMenuToggle" class="ctp-btn ctp-grp-toggle"><span class="ctp-icon">▸</span> <span>Menu</span><span id="floatCtpMenuArrow" style="margin-left:auto;opacity:0.5;">▾</span></button>
   <div id="floatCtpMenuSection" style="display:none;">
     <button id="floatCtpMenuHorizontal" class="ctp-btn" style="padding-left:1.8rem;"><span class="ctp-icon" id="floatCtpLayoutIcon">▦</span> <span id="floatCtpLayoutLabel">Horizontal</span></button>
@@ -1252,14 +1527,15 @@ document.addEventListener('DOMContentLoaded', () => {
   <div id="sqlGridPanel">
     <div class="sgp-header">
       <div class="sgp-title">
-        <span class="dot">▦</span> SQL RESULT
+        <span class="dot">▦</span> SQL
       </div>
       <div class="sgp-actions">
+        <button id="sgpBtnDb" title="Select database" class="sgp-db-btn" style="white-space:nowrap;display:inline-flex;align-items:center;">DB: base</button>
         <button id="sgpBtnEdit" title="Edit mode — tap editor while panel stays">edit</button>
         <button id="sgpBtnWrap" title="Toggle word wrap">wrap</button>
         <button id="sgpBtnCopy">copy</button>
         <button id="sgpBtnCsv">csv</button>
-        <button id="sgpBtnClose" class="sgp-close">✕ close</button>
+        <button id="sgpBtnClose" class="sgp-close" title="Close">✕</button>
       </div>
     </div>
 
@@ -1291,7 +1567,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 <!-- ═════════════════════════════════════════════════════════════
-     CLIPBOARD pill 로직
+     EDIT pill 로직
      - 풋터 CTRL+TAB 트리거 (CTRL 활성 상태에서 TAB 클릭)
      - 드래그 / 위치 저장 / 레이아웃 토글
      - 버튼 → 기존 키패드 버튼 .click() forward
@@ -1323,8 +1599,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     <script src="js2/float/float_sql.js?v=0.2.0"></script>
     <script src="js2/float/float_run.js?v=0.2.0"></script>
+    <script src="js2/float/float_ai.js?v=0.3.17"></script>
     <script src="js2/float/float_clip.js?v=0.2.0"></script>
+    <script src="js2/float/float_memedit.js?v=0.2.0"></script>
     <script src="js2/float/float_menu.js?v=0.2.0"></script>
     <script src="js2/float/float_common.js?v=0.2.0"></script>
+
+    <!-- ── OPFS / Storage notice modal ──────────────────────────── -->
+    <div class="notice-overlay" id="usekitNoticeOverlay" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="notice-modal">
+        <div class="notice-header">
+          <div class="notice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4" />
+              <path d="M14 2v5h5" /><path d="M3 15h6" /><path d="M6 12v6" />
+            </svg>
+          </div>
+          <div class="notice-title"><span>USEKIT</span> Editor Notice</div>
+        </div>
+
+        <div class="notice-lang-tabs" role="tablist">
+          <button class="notice-lang-tab active" data-lang="ko" type="button">한국어</button>
+          <button class="notice-lang-tab" data-lang="en" type="button">EN</button>
+        </div>
+
+        <div class="notice-body">
+          <div class="notice-text active" id="noticeTextKo">
+            <p><b>USEKIT Editor</b>는 <code>OPFS</code>, <code>IndexedDB</code>, <code>Cache Storage</code>, <code>localStorage</code> 같은 브라우저 기반 로컬 저장소를 사용할 수 있습니다.</p>
+            <p>일부 모바일 브라우저와 PWA 환경에서는 앱 아이콘, 바로가기, 또는 PWA를 제거하더라도 <span class="notice-warn">브라우저 내부 로컬 데이터가 완전히 삭제되지 않을 수 있습니다.</span></p>
+            <p>USEKIT Editor를 제거하기 전에는 <b>Settings</b>에서 로컬 웹 저장소를 먼저 삭제하는 것을 권장합니다.</p>
+            <p>이 내용을 이해하고 계속 사용하려면 <b>Confirm</b>을 눌러주세요.</p>
+          </div>
+          <div class="notice-text" id="noticeTextEn">
+            <p><b>USEKIT Editor</b> may use browser-based local storage such as <code>OPFS</code>, <code>IndexedDB</code>, <code>Cache Storage</code>, and <code>localStorage</code>.</p>
+            <p>In some mobile browser and PWA environments, <span class="notice-warn">browser-side local data may not be fully removed</span> when you remove an app icon, shortcut, or installed PWA.</p>
+            <p>Before removing USEKIT Editor, we recommend clearing local web storage from <b>Settings</b>.</p>
+            <p>If you understand and want to continue, tap <b>Confirm</b>.</p>
+          </div>
+        </div>
+
+        <label class="notice-check-row" for="noticeChkDontShow">
+          <input type="checkbox" id="noticeChkDontShow" />
+          <span class="notice-check-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <span class="notice-check-label" data-ko="다음부터 이 안내를 표시하지 않음" data-en="Do not show this notice again">다음부터 이 안내를 표시하지 않음</span>
+        </label>
+
+        <div class="notice-actions">
+          <button class="notice-btn notice-btn-confirm" id="btnNoticeConfirm" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Confirm
+          </button>
+          <button class="notice-btn notice-btn-close" id="btnNoticeClose" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+    <script src="js2/ui/ui_notice.js?v=0.2.0"></script>
 </body>
 </html>

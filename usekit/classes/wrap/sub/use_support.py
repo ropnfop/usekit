@@ -137,7 +137,7 @@ class _LazyDB:
     
     def _create_db(self):
         """Factory that imports and returns DBHandler instance."""
-        from usekit.classes.support.base.init.db.sbi_db import ud
+        from usekit.classes.support.base.init.dbms.sbi_db import ud
         return ud
     
     def __getattr__(self, name):
@@ -172,6 +172,180 @@ class _LazyDB:
         return self._db_lazy.is_loading
 
 
+class _LazySys:
+    """
+    Lazy wrapper for SysHandler that delays import until first access.
+    
+    Benefits:
+        - Zero initialization cost (no import on module load)
+        - Background loading support for faster startup
+        - Transparent access (behaves like SysHandler)
+    """
+    
+    def __init__(self):
+        self._sys_lazy = lazy.value(self._create_sys)
+    
+    def _create_sys(self):
+        """Factory that imports and returns SysHandler instance."""
+        from usekit.classes.support.base.init.sys.sbi_sys import us
+        return us
+    
+    def __getattr__(self, name):
+        """Transparent access to SysHandler (loads on first access)."""
+        return getattr(self._sys_lazy(), name)
+    
+    def __call__(self, *args, **kwargs):
+        """Allow direct call forwarding to SysHandler."""
+        return self._sys_lazy()(*args, **kwargs)
+    
+    def __repr__(self):
+        if self._sys_lazy.is_computed:
+            return f"<LazySys [loaded]>"
+        elif self._sys_lazy.is_loading:
+            return f"<LazySys [loading...]>"
+        else:
+            return f"<LazySys [not loaded]>"
+    
+    def preload(self):
+        """Start loading SysHandler in background (non-blocking)."""
+        self._sys_lazy.start_background_load()
+        return self
+    
+    @property
+    def is_loaded(self):
+        """Check if SysHandler has been loaded."""
+        return self._sys_lazy.is_computed
+    
+    @property
+    def is_loading(self):
+        """Check if SysHandler is currently loading in background."""
+        return self._sys_lazy.is_loading
+
+
+class _LazyKM:
+    """
+    Lazy wrapper for KMHandler that delays import until first access.
+
+    Benefits:
+        - Zero initialization cost (no import on module load)
+        - Background loading support for faster startup
+        - Transparent access (behaves like KMHandler)
+    """
+
+    def __init__(self):
+        self._km_lazy = lazy.value(self._create_km)
+
+    def _create_km(self):
+        """Factory that imports and returns KMHandler instance."""
+        from usekit.classes.support.base.init.km.sbi_km import uk
+        return uk
+
+    def __getattr__(self, name):
+        """Transparent access to KMHandler (loads on first access)."""
+        return getattr(self._km_lazy(), name)
+
+    def __call__(self, *args, **kwargs):
+        """Allow direct call forwarding to KMHandler."""
+        return self._km_lazy()(*args, **kwargs)
+
+    def __repr__(self):
+        if self._km_lazy.is_computed:
+            return f"<LazyKM [loaded]>"
+        elif self._km_lazy.is_loading:
+            return f"<LazyKM [loading...]>"
+        else:
+            return f"<LazyKM [not loaded]>"
+
+    def preload(self):
+        """Start loading KMHandler in background (non-blocking)."""
+        self._km_lazy.start_background_load()
+        return self
+
+    @property
+    def is_loaded(self):
+        """Check if KMHandler has been loaded."""
+        return self._km_lazy.is_computed
+
+    @property
+    def is_loading(self):
+        """Check if KMHandler is currently loading in background."""
+        return self._km_lazy.is_loading
+
+
+class _LazyUtil:
+    """Lazy wrapper for UtilHandler (uu) — usekit utilities (task generator, etc.)."""
+
+    def __init__(self):
+        self._util_lazy = lazy.value(self._create_util)
+
+    def _create_util(self):
+        from usekit.classes.support.base.init.util.sbi_util import uu
+        return uu
+
+    def __getattr__(self, name):
+        return getattr(self._util_lazy(), name)
+
+    def __call__(self, *args, **kwargs):
+        return self._util_lazy()(*args, **kwargs)
+
+    def __repr__(self):
+        if self._util_lazy.is_computed:
+            return f"<LazyUtil [loaded]>"
+        elif self._util_lazy.is_loading:
+            return f"<LazyUtil [loading...]>"
+        else:
+            return f"<LazyUtil [not loaded]>"
+
+    def preload(self):
+        self._util_lazy.start_background_load()
+        return self
+
+    @property
+    def is_loaded(self):
+        return self._util_lazy.is_computed
+
+    @property
+    def is_loading(self):
+        return self._util_lazy.is_loading
+
+
+class _LazyEmo:
+    """Lazy wrapper for EmoHandler (ue) — emotion/knowledge pure utilities."""
+
+    def __init__(self):
+        self._emo_lazy = lazy.value(self._create_emo)
+
+    def _create_emo(self):
+        from usekit.classes.support.base.init.emo.sbi_emo import ue
+        return ue
+
+    def __getattr__(self, name):
+        return getattr(self._emo_lazy(), name)
+
+    def __call__(self, *args, **kwargs):
+        return self._emo_lazy()(*args, **kwargs)
+
+    def __repr__(self):
+        if self._emo_lazy.is_computed:
+            return f"<LazyEmo [loaded]>"
+        elif self._emo_lazy.is_loading:
+            return f"<LazyEmo [loading...]>"
+        else:
+            return f"<LazyEmo [not loaded]>"
+
+    def preload(self):
+        self._emo_lazy.start_background_load()
+        return self
+
+    @property
+    def is_loaded(self):
+        return self._emo_lazy.is_computed
+
+    @property
+    def is_loading(self):
+        return self._emo_lazy.is_loading
+
+
 # ----------------------------------------------------------------------------------------------- 
 # Create lazy support instances
 # ----------------------------------------------------------------------------------------------- 
@@ -184,6 +358,18 @@ uw = _LazyWatch()
 
 # ud: Database utilities (query, execute, insert, update, delete, etc.)
 ud = _LazyDB()
+
+# us: System utilities (env, key, keys, base, platform, exists, join, mkdir, etc.)
+us = _LazySys()
+
+# uk: KeyMemory utilities (read, write, add, remove, list, clear, info, etc.)
+uk = _LazyKM()
+
+# uu: Utility tools (task work-unit generator: new/step/list/show/done, etc.)
+uu = _LazyUtil()
+
+# ue: Emotion utilities (pure coordinate transforms: hslva, later ersdf/dhsl/meta)
+ue = _LazyEmo()
 
 # ----------------------------------------------------------------------------------------------- 
 # Optional: Preload in background (uncomment to enable)
@@ -203,7 +389,7 @@ ud = _LazyDB()
 # Public API
 # ----------------------------------------------------------------------------------------------- 
 
-__all__ = ['ut', 'uw', 'ud']
+__all__ = ['ut', 'uw', 'ud', 'us', 'uk', 'uu']
 
 # ----------------------------------------------------------------------------------------------- 
 #  [ withropnfop@gmail.com ]  

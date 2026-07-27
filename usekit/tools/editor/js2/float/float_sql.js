@@ -105,6 +105,12 @@
   let _lastResult = null;
   let _lastError  = null;
 
+  // ── DB selection state ──
+  // null = default base.db (db arg omitted). a path string = run against that DB.
+  let _selectedDb     = null;   // selected db absolute path (or null)
+  let _selectedDbName = 'base'; // short name for the header label
+  let _dbList         = null;   // cached fad result: [{path, name, group}]
+
   // ── 셀 값 → 문자열 변환 (null/undefined → 빈 문자열) ──
   function _cellToStr(v) {
     if (v === null || v === undefined) return '';
@@ -275,6 +281,7 @@
   // 사용자 SQL을 Python 코드로 감싸서 /api/exec에 보냄
   // 결과는 stdout에 __SQL_RESULT__{json} / __SQL_ERROR__{json} 마커로 출력
   function _buildSqlWrapper(sqlText, paramStr) {
+    const dbArg = _dbArg();
     // SQL을 base64로 안전하게 임베드 (어떤 따옴표/특수문자도 절대 안 깨짐)
     // - btoa는 ASCII만 받으므로 TextEncoder로 UTF-8 바이트화 후 base64
     const _utf8  = new TextEncoder().encode(String(sqlText));
@@ -302,7 +309,7 @@ else:
     _t0 = _time.time()
     try:
         if _is_ddl:
-            _u.xdb(_stripped)
+            _u.xdb(_stripped${dbArg ? ', ' + dbArg : ''})
             _ms = int((_time.time() - _t0) * 1000)
             print("__SQL_RESULT__" + _json.dumps({
                 "kind": "ddl", "verb": _kw,
@@ -310,7 +317,7 @@ else:
             }))
         else:
             _KWARGS = ${paramStr || "{}"}
-            _result = _u.xsb(_stripped, **_KWARGS)
+            _result = _u.xsb(_stripped, ${dbArg ? dbArg + ', ' : ''}**_KWARGS)
             _ms = int((_time.time() - _t0) * 1000)
 
             # 결과 형태 판별: list of rows (SELECT) / None or int (DML)
@@ -362,6 +369,7 @@ else:
   // 메타 테이블 wrapper — 테이블 목록 + 통계 + 행수 한방
   // ═════════════════════════════════════════════════════════════
   function _buildMetaTablesWrapper() {
+    const dbArg = _dbArg();
     return `import json as _json, time as _time, traceback as _tb
 try:
     from usekit import u as _u
@@ -388,7 +396,7 @@ else:
             WHERE type='table' AND name NOT LIKE 'sqlite_%'
             ORDER BY m.name
         """
-        _meta = _u.xsb(_meta_sql)
+        _meta = _u.xsb(_meta_sql${dbArg ? ', ' + dbArg : ''})
 
         # 2단계: 각 테이블 행수 (Python 루프 — 동적 SQL 한계 회피)
         _cols  = ["name", "cols", "rows", "pk", "nn", "fk", "idx"]
@@ -415,7 +423,7 @@ else:
             # 행수 — 실패해도 전체는 진행 (None 표시)
             try:
                 _safe = str(_name).replace('"', '""')
-                _cnt  = _u.xsb('SELECT COUNT(*) AS c FROM "' + _safe + '"')
+                _cnt  = _u.xsb('SELECT COUNT(*) AS c FROM "' + _safe + '"'${dbArg ? ', ' + dbArg : ''})
                 if _cnt and hasattr(_cnt[0], '_fields'):
                     _n = _cnt[0].c
                 elif _cnt and isinstance(_cnt[0], dict):
@@ -502,6 +510,7 @@ else:
   // (u.xsb는 "one statement at a time"만 지원)
   // ═════════════════════════════════════════════════════════════
   function _buildSqlBatchWrapper(statementsArray) {
+    const dbArg = _dbArg();
     // statements 배열을 base64로 안전하게 전달
     const stmtsJson = JSON.stringify(statementsArray);
     const _utf8 = new TextEncoder().encode(stmtsJson);
@@ -531,11 +540,11 @@ else:
         _stmt_t0 = _time.time()
         try:
             if _is_ddl:
-                _u.xdb(_sql)
+                _u.xdb(_sql${dbArg ? ', ' + dbArg : ''})
                 _ms_s = int((_time.time() - _stmt_t0) * 1000)
                 _results.append({"kind":"ddl","verb":_kw,"elapsed_ms":_ms_s,"sql":_sql,"stmt_index":_idx})
             else:
-                _result = _u.xsb(_sql)
+                _result = _u.xsb(_sql${dbArg ? ', ' + dbArg : ''})
                 _ms_s = int((_time.time() - _stmt_t0) * 1000)
                 if isinstance(_result, list) and _result:
                     _first = _result[0]
@@ -2188,6 +2197,161 @@ else:
   // copy / csv 버튼
   document.getElementById('sgpBtnCopy')?.addEventListener('click', _doCopy);
   document.getElementById('sgpBtnCsv')?.addEventListener('click', _doCsv);
+
+  // ═══════════════════════════════════════════════════════════
+  //  DB SELECTOR — header pill to choose which sqlite db to run against
+  // ═══════════════════════════════════════════════════════════
+
+  // load DB list once per page load: u.fad("*db") -> [{path, name, group}]
+  // cached in _dbList. browser refresh re-runs this once (= sync point).
+  async function _loadDbList() {
+    if (_dbList) return _dbList;
+    const code = `import json as _json
+try:
+    from usekit import u as _u
+    _paths = [str(_p) for _p in _u.fad("*db", wk=True)]
+    print("__DBLIST__" + _json.dumps(_paths))
+except Exception as _e:
+    print("__DBLIST__" + _json.dumps([]))`;
+    try {
+      const res = await fetch('/api/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, inputs: [], timeout: 15 }),
+      });
+      const json = await res.json();
+      const m = (json.stdout || '').match(/__DBLIST__(.*)/);
+      const paths = m ? JSON.parse(m[1]) : [];
+      _dbList = paths.map(p => {
+        const name  = p.split('/').pop();                 // e.g. llm.db
+        const group = p.includes('/sys/sys_db/') ? 'SYS'
+                    : p.includes('/data/table/')  ? 'DATA'
+                    : 'OTHER';
+        return { path: p, name, group };
+      });
+    } catch (e) {
+      _dbList = [];
+    }
+    return _dbList;
+  }
+
+  // DB picker dropdown
+  async function _openDbPicker() {
+    const list = await _loadDbList();
+    const old = document.getElementById('sgpDbDrop');
+    if (old) { old.remove(); return; }   // toggle close
+
+    const btn  = document.getElementById('sgpBtnDb');
+    const drop = document.createElement('div');
+    drop.id = 'sgpDbDrop';
+    drop.style.cssText =
+      'position:absolute;z-index:9999;background:#1c1c20;border:1px solid #444;' +
+      'border-radius:6px;padding:4px;min-width:200px;max-height:50vh;overflow:auto;' +
+      'font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.4);';
+
+    // group -> dot color (matches the header pill)
+    const _dotOf = (g) => g === 'SYS'  ? '#5aa9e6'
+                        : g === 'DATA' ? '#e6915a'
+                        : '#888';
+
+    const mkItem = (label, sub, onClick, active, group) => {
+      const it = document.createElement('div');
+      it.style.cssText =
+        'padding:7px 10px;border-radius:4px;cursor:pointer;color:#ddd;' +
+        'display:flex;align-items:center;gap:8px;' +
+        (active ? 'background:#2d4a7a;' : '');
+      const dotColor = _dotOf(group);
+      const filled   = group != null;   // base has no group -> hollow
+      it.innerHTML =
+        '<span style="flex:0 0 auto;width:7px;height:7px;border-radius:50%;' +
+          (filled ? 'background:' + dotColor + ';'
+                  : 'border:1.5px solid ' + dotColor + ';') +
+        '"></span>' +
+        '<span><b>' + label + '</b>' +
+          (sub ? '<span style="opacity:.5;font-size:10px;"> ' + sub + '</span>' : '') +
+        '</span>';
+      it.onmousedown = (e) => { e.preventDefault(); onClick(); drop.remove(); };
+      return it;
+    };
+
+    // default (base) — db arg omitted
+    drop.appendChild(mkItem('base', '(default)', () => _selectDb(null, 'base'), _selectedDb === null, null));
+
+    ['SYS', 'DATA', 'OTHER'].forEach(g => {
+      const items = list.filter(d => d.group === g);
+      if (!items.length) return;
+      const hdr = document.createElement('div');
+      hdr.textContent = g;
+      hdr.style.cssText = 'padding:8px 10px 2px;font-size:10px;letter-spacing:1px;' +
+        'color:' + _dotOf(g) + ';opacity:.7;';
+      drop.appendChild(hdr);
+      items.forEach(d => {
+        drop.appendChild(mkItem(d.name, '', () => _selectDb(d.path, d.name), _selectedDb === d.path, g));
+      });
+    });
+
+    document.body.appendChild(drop);
+    const r = btn.getBoundingClientRect();
+    drop.style.top  = (r.bottom + 4) + 'px';
+    drop.style.left = Math.max(4, r.left) + 'px';
+
+    setTimeout(() => {
+      const close = (e) => {
+        if (!drop.contains(e.target) && e.target !== btn) {
+          drop.remove();
+          document.removeEventListener('mousedown', close);
+        }
+      };
+      document.addEventListener('mousedown', close);
+    }, 0);
+  }
+
+  function _selectDb(path, name) {
+    _selectedDb     = path;     // null -> default base
+    _selectedDbName = name;
+    const btn = document.getElementById('sgpBtnDb');
+    if (!btn) return;
+
+    // group color dot: SYS=cool, DATA=warm, base/other=hollow
+    let group = null;
+    if (path && _dbList) {
+      const hit = _dbList.find(d => d.path === path);
+      group = hit ? hit.group : null;
+    }
+    const dotColor = group === 'SYS'  ? '#5aa9e6'   // cool blue  (engine)
+                   : group === 'DATA' ? '#e6915a'   // warm orange(project)
+                   : '#888';                        // base/other
+    const filled = path !== null;                   // base -> hollow dot
+
+    // front-truncate so the ".db" tail is always visible (direction:rtl trick)
+    btn.innerHTML =
+      '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;' +
+        'margin-right:6px;vertical-align:middle;' +
+        (filled ? 'background:' + dotColor + ';'
+                : 'border:1.5px solid ' + dotColor + ';background:transparent;') +
+      '"></span>' +
+      '<span style="display:inline-block;max-width:96px;overflow:hidden;' +
+        'text-overflow:ellipsis;white-space:nowrap;direction:rtl;' +
+        'vertical-align:middle;font-weight:600;unicode-bidi:plaintext;">' +
+        name +
+      '</span>';
+  }
+
+  // build python db= fragment from _selectedDb. '' if default(base).
+  // path is base64-embedded for safety against quotes/special chars.
+  function _dbArg() {
+    if (!_selectedDb) return '';   // default base -> omit db
+    const utf8 = new TextEncoder().encode(_selectedDb);
+    let bin = '';
+    for (let i = 0; i < utf8.length; i++) bin += String.fromCharCode(utf8[i]);
+    const b64 = btoa(bin);
+    return 'db=__import__("base64").b64decode("' + b64 + '").decode("utf-8")';
+  }
+
+  // bind + preload (browser refresh re-syncs the list)
+  document.getElementById('sgpBtnDb')?.addEventListener('click', _openDbPicker);
+  _loadDbList();
+  _selectDb(null, 'base');   // initial render: hollow dot + "base"
 
   // 외부에서 호출 가능하게 노출
   window.SqlView = {

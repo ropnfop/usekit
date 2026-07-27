@@ -4,7 +4,7 @@
  * Purpose: Service Worker for offline caching and PWA support
  *---------------------------------------------------------------------------------------------*/
 
-const CACHE_VERSION = 'usekit-editor-v0.2.0'; // ← 배포 시 버전 올리기
+const CACHE_VERSION = 'usekit-editor-v0.3.28'; // ← 배포 시 버전 올리기 (JS 변경 시 필수)
 const CACHE_NAME = CACHE_VERSION;
 
 // 🔧 DEV_MODE: index.html의 DEV_MODE = true 이면 SW가 설치되지 않으므로
@@ -69,6 +69,7 @@ const ASSETS_TO_CACHE = [
     './js2/float/float_run.js',
     './js2/float/float_clip.js',
     './js2/float/float_menu.js',
+    './js2/float/float_ai.js',
 
     // Popup
     './js2/popup/popup_manager.js',
@@ -86,6 +87,7 @@ const ASSETS_TO_CACHE = [
 // Install 이벤트 - 리소스 캐싱
 self.addEventListener('install', (event) => {
     console.log('[SW] Installing Service Worker...', CACHE_VERSION);
+    self.skipWaiting();   // activate the new SW immediately; don't wait for a SKIP_WAITING message
     
     event.waitUntil(
         caches.open(CACHE_NAME)

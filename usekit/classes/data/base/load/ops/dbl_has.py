@@ -206,10 +206,17 @@ def has_operation(**kwargs) -> bool:
     """
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # [0] Mem shortcut — no file I/O
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if kwargs.get("loc") == "mem":
+        from usekit.classes.data.base.load.ops.dbl_mem_store import mem_has
+        return mem_has(kwargs.get("name"))
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # [1] Extract Parameters
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     p = params_for_has(**kwargs)
-    
+
     # Warn about future features (k, kv, kc, kf)
     warn_future_features(p)
     
@@ -270,6 +277,7 @@ def has_operation(**kwargs) -> bool:
         loc=p["loc"],
         user_dir=p.get("dir_path"),
         walk=walk,
+        extensions=p.get("ext"),
         case_sensitive=p.get("case_sensitive", False),
         debug=p["debug"]
     )

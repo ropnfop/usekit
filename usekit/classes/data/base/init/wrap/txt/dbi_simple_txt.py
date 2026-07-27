@@ -29,8 +29,12 @@ from usekit.classes.data.base.init.wrap.txt.dbi_wrap_txt import (
     has_txt_base, has_txt_sub, has_txt_dir, has_txt_now,
     has_txt_tmp, has_txt_pre, has_txt_cache,
 )
-# EMIT
-from usekit.classes.data.base.init.wrap.txt.dbi_wrap_txt import emit_txt_mem
+# EMIT + MEM
+from usekit.classes.data.base.init.wrap.txt.dbi_wrap_txt import (
+    emit_txt_mem,
+    read_txt_mem, write_txt_mem, update_txt_mem,
+    delete_txt_mem, has_txt_mem, list_txt_mem,
+)
 
 # ===============================================================================
 # TxtSimple class - Ultra-short interface with alias support
@@ -255,7 +259,38 @@ class TxtSimple:
         """has txt cache : supports positional, keyword, and alias (nm, dp, kd)"""
         return _wrap_read_format(has_txt_cache)(name, dir_path, keydata, cus, **kwargs)
 
-# Singleton-style export
+    # ─────────────────────────────────────
+    # MEM (rtm/wtm/utm/dtm/htm/ltm) - in-memory store
+    # ─────────────────────────────────────
+    @staticmethod
+    def rtm(name=None, **kwargs):
+        """read txt mem : read from in-memory store"""
+        return read_txt_mem(name=name, **kwargs)
+
+    @staticmethod
+    def wtm(data=None, name=None, **kwargs):
+        """write txt mem : write to in-memory store"""
+        return write_txt_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def utm(data=None, name=None, **kwargs):
+        """update txt mem : merge dict into existing in-memory store entry"""
+        return update_txt_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def dtm(name=None, **kwargs):
+        """delete txt mem : delete from in-memory store"""
+        return delete_txt_mem(name=name, **kwargs)
+
+    @staticmethod
+    def htm(name=None, **kwargs):
+        """has txt mem : check existence in in-memory store"""
+        return has_txt_mem(name=name, **kwargs)
+
+    @staticmethod
+    def ltm(**kwargs):
+        """list txt mem : list all keys in in-memory store"""
+        return list_txt_mem()
 
     # ─────────────────────────────────────
     # EMIT (etm) - memory-only serialization

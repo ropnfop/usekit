@@ -938,24 +938,29 @@ table.sgp-grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .rp-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0.45rem 0.75rem 0.45rem 0.9rem;
+  flex-wrap: nowrap;            /* 1단은 항상 한 줄 (§4-6 근육기억) */
+  gap: 0.3rem;
+  padding: 0.45rem 0.5rem 0.45rem 0.6rem;
   background: #111820;
   border-radius: 16px 16px 0 0;
   border-bottom: 1px solid #1e2830;
   flex-shrink: 0;
+  overflow: hidden;             /* 혹시 넘쳐도 둘째 줄로 안 흐르게 */
 }
 .rp-title {
-  font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em;
+  font-size: 0.70rem; font-weight: 700; letter-spacing: 0.06em;
   color: #4caf50;
   display: flex; align-items: center; gap: 5px;
+  white-space: nowrap;          /* "AI CHAT" 한 줄 */
+  flex-shrink: 0;
 }
-.rp-actions { display: flex; gap: 0.4rem; align-items: center; }
+.rp-actions { display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap; min-width: 0; }
 .rp-actions button {
-  font-size: 0.72rem; padding: 0.18rem 0.65rem;
+  font-size: 0.68rem; padding: 0.16rem 0.45rem;
   border-radius: 6px; border: 1px solid #2a3340;
   background: transparent; color: #7a8a9a;
-  cursor: pointer; letter-spacing: 0.02em;
-  font-family: inherit;
+  cursor: pointer; letter-spacing: 0.01em;
+  font-family: inherit; white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
 .rp-actions button.rp-close {
@@ -976,3 +981,692 @@ table.sgp-grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
   line-height: 1.65;
   overscroll-behavior: contain;
 }
+
+/* ══════════════════════════════════════════════════════════
+   STEP B ② — 2단 고정 도크 (#rpDock2)
+   기존 떠다니던 miniRunPanel 폐기 → 헤더 밑 붙박이. 높이 불변.
+   디자인: 1단(.rp-actions) 언어 계승 — 투명 배경 + 색 보더 + 색 글자,
+   활성/경고 시 같은 색 rgba 배경이 차오른다.
+═══════════════════════════════════════════════════════════ */
+.rp-dock2 {
+  flex-shrink: 0;
+  display: flex; align-items: center;
+  gap: 0;
+  padding: 0.4rem 0.6rem;
+  /* 헤더(#111820)→본문(#0d1117) 사이 톤: 1·2단 연속감 */
+  background: linear-gradient(180deg, #0e151c 0%, #0c1117 100%);
+  border-bottom: 1px solid #1e2830;
+  border-top: 1px solid transparent;     /* 모드색 라인 자리 */
+  overflow-x: auto; overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.rp-dock2::-webkit-scrollbar { display: none; }
+.rp-dock2:empty { display: none; }
+.rp-dock2.is-collapsed { display: none; }
+
+/* 모드별 상단 라인 + 은은한 상단 글로우 (어느 모드 도구인지 각인) */
+.rp-dock2[data-mode="edit"] { border-top-color: rgba(76,175,80,0.55);  box-shadow: inset 0 1px 0 rgba(76,175,80,0.10); }
+.rp-dock2[data-mode="chat"] { border-top-color: rgba(167,139,250,0.55); box-shadow: inset 0 1px 0 rgba(167,139,250,0.10); }
+.rp-dock2[data-mode="job"]  { border-top-color: rgba(88,166,255,0.55);  box-shadow: inset 0 1px 0 rgba(88,166,255,0.10); }
+
+.rp-dock2 .minirun-body {
+  display: flex; gap: 0.3rem; width: 100%;
+  flex-wrap: nowrap; align-items: center;
+}
+
+/* ── 레이아웃 전략 ──
+   edit : [Shell｜Run Line Block]  — 동작 위주, Run/Line/Block 균등
+   chat : [Add  모델 ｜ Cont  session] — 동작 그룹(좌) + 상태판(우), 구분선으로 분리 */
+
+/* edit: 동작 3종 — 내용+여유 크기(전체폭 꽉채움 방지, chat 과 리듬 통일) */
+.rp-dock2[data-mode="edit"] .minirun-body button { flex: 0 1 auto; min-width: 4.5rem; }
+.rp-dock2[data-mode="edit"] .minirun-body button.mr-status { flex: 0 0 auto; min-width: 0; }
+
+/* chat/job: 동작버튼은 내용 크기, 첫 상태칩(Cont) 앞에서 자동으로 우측으로 밀려남 */
+.rp-dock2[data-mode="chat"] .minirun-body button,
+.rp-dock2[data-mode="job"]  .minirun-body button { flex: 0 0 auto; }
+/* 모델 버튼: 비대 방지 — 내용만큼만, 최대폭 제한 */
+.rp-dock2[data-mode="chat"] .minirun-body button.mr-model,
+.rp-dock2[data-mode="job"]  .minirun-body button.mr-model {
+  flex: 0 1 auto; max-width: 9rem;
+}
+/* 첫 상태칩(Cont)을 오른쪽으로 밀어 동작/상태 두 그룹 분리 + 세로 구분선 */
+.rp-dock2[data-mode="chat"] .minirun-body button.mr-status:first-of-type,
+.rp-dock2[data-mode="job"]  .minirun-body button.mr-status:first-of-type {
+  margin-left: auto;
+  border-left: 1px solid #1e2830;   /* 그룹 구분 힌트 */
+  padding-left: 0.7rem; margin-left: auto;
+}
+
+/* ── 공통 동작버튼 ── */
+.rp-dock2 .minirun-body button {
+  flex: 1 1 0; min-width: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #2a3340;
+  background: rgba(255,255,255,0.04);
+  color: #c9d1d9;
+  font-family: inherit;
+  font-size: 0.74rem; font-weight: 600; letter-spacing: 0.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, transform .06s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.rp-dock2 .minirun-body button:active {
+  background: rgba(255,255,255,0.1);
+  transform: translateY(1px);
+}
+.rp-dock2 .minirun-body button .mr-ico {
+  font-size: 0.72rem; opacity: 0.9; flex-shrink: 0;
+}
+
+/* 동작버튼 색상 — 보더+배경에 자기 색 옅게(글자/아이콘색은 인라인) */
+.rp-dock2 .minirun-body button.mr-run   { border-color: rgba(126,231,135,0.32); background: rgba(126,231,135,0.08); }
+.rp-dock2 .minirun-body button.mr-line  { border-color: rgba(121,192,255,0.32); background: rgba(121,192,255,0.08); }
+.rp-dock2 .minirun-body button.mr-block { border-color: rgba(210,168,255,0.32); background: rgba(210,168,255,0.08); }
+.rp-dock2 .minirun-body button.mr-add   { border-color: rgba(126,231,135,0.32); background: rgba(126,231,135,0.08); }
+.rp-dock2 .minirun-body button.mr-model { border-color: rgba(88,166,255,0.32);  background: rgba(88,166,255,0.08); }
+/* TASK 동작버튼 */
+.rp-dock2 .minirun-body button.mr-stop  { border-color: rgba(255,123,114,0.38); background: rgba(255,123,114,0.10); }
+.rp-dock2 .minirun-body button.mr-check { border-color: rgba(121,192,255,0.32); background: rgba(121,192,255,0.08); }
+.rp-dock2 .minirun-body button.mr-logs  { border-color: rgba(126,231,135,0.32); background: rgba(126,231,135,0.08); }
+
+/* Manager 칩 — 작업 실행 중이면 점 켜고 강조(파랑) */
+.rp-dock2 .minirun-body button.mr-manager.mgr-on {
+  color: #58a6ff; border-color: rgba(88,166,255,0.5); background: rgba(88,166,255,0.12); font-weight: 600;
+}
+.rp-dock2 .minirun-body button.mr-manager.mgr-on::before {
+  background: #58a6ff; box-shadow: 0 0 5px rgba(88,166,255,0.7);
+}
+
+/* ── Task Manager 패널 (Stop/Tail/Check/Logs 격리) ── */
+.task-mgr-panel {
+  position: fixed; left: 0.6rem; right: 0.6rem; z-index: 10001;
+  max-width: 22rem;
+  background: #0e151c; border: 1px solid #1e2830;
+  border-top: 2px solid #58a6ff;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+  padding: 0.7rem 0.8rem 0.8rem;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  -webkit-tap-highlight-color: transparent;
+}
+.task-mgr-panel .tm-head {
+  display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;
+}
+.task-mgr-panel .tm-title { font-size: 0.78rem; font-weight: 700; color: #58a6ff; letter-spacing: 0.03em; }
+.task-mgr-panel .tm-state { font-size: 0.66rem; color: #7a8a9a; }
+.task-mgr-panel .tm-state.on { color: #7ee787; }
+.task-mgr-panel .tm-x {
+  margin-left: auto; background: transparent; border: none; color: #8b97a6;
+  font-size: 0.85rem; cursor: pointer; padding: 0 0.2rem;
+}
+.task-mgr-panel .tm-sess {
+  font-size: 0.66rem; color: #6b7785; margin-bottom: 0.6rem; letter-spacing: 0.02em;
+}
+.task-mgr-panel .tm-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;
+}
+.task-mgr-panel .tm-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  padding: 0.6rem 0.5rem; border-radius: 8px;
+  border: 1px solid #2a3340; background: rgba(255,255,255,0.04);
+  color: #c9d1d9; font-family: inherit; font-size: 0.76rem; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .12s ease, transform .06s ease;
+}
+.task-mgr-panel .tm-btn:active { background: rgba(255,255,255,0.1); transform: translateY(1px); }
+.task-mgr-panel .tm-stop  { color: #ff7b72; border-color: rgba(255,123,114,0.38); background: rgba(255,123,114,0.10); }
+.task-mgr-panel .tm-check { color: #79c0ff; border-color: rgba(121,192,255,0.32); background: rgba(121,192,255,0.08); }
+.task-mgr-panel .tm-logs  { color: #7ee787; border-color: rgba(126,231,135,0.32); background: rgba(126,231,135,0.08); }
+.task-mgr-panel .tm-tail  { color: #8b97a6; }
+.task-mgr-panel .tm-tail .tm-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #4a5363; flex-shrink: 0;
+}
+.task-mgr-panel .tm-tail.on { color: #7ee787; border-color: rgba(126,231,135,0.45); background: rgba(126,231,135,0.10); }
+.task-mgr-panel .tm-tail.on .tm-dot { background: #7ee787; box-shadow: 0 0 5px rgba(126,231,135,0.7); }
+
+/* ── 상태 pill (Shell/Cont/session): 동작버튼과 형태부터 차별화 ──
+   더 작고 더 둥근 캡슐 + 앞쪽 상태 점(::before). 평소 회색 점(꺼짐), 켜지면 색 점. */
+.rp-dock2 .minirun-body button.mr-status {
+  flex: 0 0 auto;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;                /* 캡슐 형태 */
+  color: #8b97a6;
+  border: 1px solid #283040;
+  background: rgba(255,255,255,0.02);
+  font-weight: 500; font-size: 0.72rem;
+}
+.rp-dock2 .minirun-body button.mr-status::before {
+  content: ''; flex-shrink: 0;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #4a5363;                  /* 꺼짐 = 흐린 회색 점 */
+  transition: background .12s ease, box-shadow .12s ease;
+}
+.rp-dock2 .minirun-body button.mr-status:active { background: rgba(255,255,255,0.06); }
+
+/* 켜짐 = 색 점이 켜지고(글로우) 캡슐도 옅게 차오름 */
+.rp-dock2 .minirun-body button.mr-status.shell-on {
+  color: #f0883e; border-color: rgba(240,136,62,0.5); background: rgba(240,136,62,0.12); font-weight: 600;
+}
+.rp-dock2 .minirun-body button.mr-status.shell-on::before {
+  background: #f0883e; box-shadow: 0 0 5px rgba(240,136,62,0.7);
+}
+.rp-dock2 .minirun-body button.mr-status.cont-on {
+  color: #ffa657; border-color: rgba(255,166,87,0.5); background: rgba(255,166,87,0.12); font-weight: 600;
+}
+.rp-dock2 .minirun-body button.mr-status.cont-on::before {
+  background: #ffa657; box-shadow: 0 0 5px rgba(255,166,87,0.7);
+}
+.rp-dock2 .minirun-body button.mr-status.sess-on {
+  color: #7ee787; border-color: rgba(126,231,135,0.5); background: rgba(126,231,135,0.10);
+}
+.rp-dock2 .minirun-body button.mr-status.sess-on::before {
+  background: #7ee787; box-shadow: 0 0 5px rgba(126,231,135,0.7);
+}
+.rp-dock2 .minirun-body button.mr-status.sess-resume {
+  color: #ffa657; border-color: rgba(255,166,87,0.42); background: rgba(255,166,87,0.08);
+}
+.rp-dock2 .minirun-body button.mr-status.sess-resume::before {
+  background: #ffa657; box-shadow: 0 0 4px rgba(255,166,87,0.6);
+}
+
+/* 🔍 검색 ON = 파랑 / 🎙 음성 활성(대화·읽기·받아쓰기 중) = 보라 */
+.rp-dock2 .minirun-body button.mr-status.search-on {
+  color: #58a6ff; border-color: rgba(88,166,255,0.5); background: rgba(88,166,255,0.12); font-weight: 600;
+}
+.rp-dock2 .minirun-body button.mr-status.search-on::before {
+  background: #58a6ff; box-shadow: 0 0 5px rgba(88,166,255,0.7);
+}
+.rp-dock2 .minirun-body button.mr-status.voice-on {
+  color: #a78bfa; border-color: rgba(167,139,250,0.5); background: rgba(167,139,250,0.14); font-weight: 600;
+}
+.rp-dock2 .minirun-body button.mr-status.voice-on::before {
+  background: #a78bfa; box-shadow: 0 0 6px rgba(167,139,250,0.8);
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   FLOAT AI TOOL  (Run | Think | + | ▾)
+   chat 모드에서 floatRunTool 대신 표시
+═══════════════════════════════════════════════════════════ */
+#floatAiTool {
+  position: fixed; z-index: 99999;
+  right: 14px; bottom: 120px;
+  display: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  touch-action: none;
+  user-select: none;
+  background: rgba(28, 20, 44, 0.90);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 18px;
+  padding: 4px;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.34),
+    0 2px 8px rgba(0,0,0,0.18);
+  width: 40px;
+}
+
+#floatAiTool .fb {
+  width: 32px; height: 32px;
+  border: none; border-radius: 14px;
+  cursor: pointer; touch-action: none;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1px;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: filter 0.12s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+#floatAiTool .fb:active { filter: brightness(1.2); transform: scale(0.92); }
+
+#floatAiTool .fb-div {
+  height: 1px;
+  background: rgba(167, 139, 250, 0.12);
+  margin: 2px 4px;
+}
+
+/* ── AI Run 버튼 (보라 메인) ── */
+#floatAiRun {
+  background: linear-gradient(180deg, #9b6dff 0%, #7c4dff 100%);
+  border: 1px solid rgba(180, 160, 255, 0.35);
+  color: #f4f0ff;
+  box-shadow:
+    0 8px 18px rgba(124, 77, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+#floatAiRun .fb-icon { font-size: 12px; line-height: 1; }
+#floatAiRun .fb-label { font-size: 8px; letter-spacing: 0.04em; color: rgba(244, 240, 255, 0.82); }
+
+/* ── Think 버튼 ── */
+#floatAiThink {
+  background: rgba(44, 36, 58, 0.92);
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  color: rgba(200, 190, 230, 0.82);
+  opacity: 0.80;
+}
+#floatAiThink .fb-icon { font-size: 11px; line-height: 1; }
+#floatAiThink .fb-label { font-size: 7px; color: rgba(200, 190, 230, 0.55); }
+#floatAiThink.is-active {
+  opacity: 1;
+  background: rgba(80, 60, 120, 0.85);
+  border-color: rgba(167, 139, 250, 0.35);
+  color: #c8b8ff;
+}
+#floatAiThink.is-active .fb-label { color: rgba(200, 180, 255, 0.85); }
+
+/* ── Add(첨부) 버튼 ── */
+#floatAiAttach {
+  background: rgba(44, 36, 58, 0.92);
+  border: 1px solid rgba(167, 139, 250, 0.14);
+  color: rgba(200, 190, 230, 0.82);
+  opacity: 0.75;
+}
+#floatAiAttach .fb-icon { font-size: 13px; line-height: 1; font-weight: 700; }
+#floatAiAttach .fb-label { font-size: 7px; color: rgba(200, 190, 230, 0.50); }
+#floatAiAttach.is-active {
+  opacity: 1;
+  background: rgba(80, 60, 120, 0.85);
+  border-color: rgba(167, 139, 250, 0.30);
+}
+
+/* ── Model(▾) 버튼 ── */
+#floatAiModel {
+  background: rgba(44, 36, 58, 0.92);
+  border: 1px solid rgba(167, 139, 250, 0.12);
+  color: rgba(200, 190, 230, 0.72);
+  opacity: 0.70;
+}
+#floatAiModel .fb-icon { font-size: 12px; line-height: 1; }
+#floatAiModel .fb-label { font-size: 7px; color: rgba(200, 190, 230, 0.45); }
+
+/* ── AI 드롭업 패널 공통 ── */
+#floatAiModelPanel,
+#floatAiAttachPanel,
+#floatAiOptPanel,
+#floatAiVoicePanel {
+  position: fixed; z-index: 100000;
+  display: none;
+  flex-direction: column;
+  background: rgba(22, 18, 36, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  border-radius: 14px;
+  padding: 4px 0;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+  min-width: 140px;
+}
+#floatAiVoicePanel { min-width: 172px; }
+/* Opt panel */
+#floatAiOptPanel { min-width: 180px; }
+/* Opt chip buttons */
+.ai-opt-chip {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(200,195,220,0.7);
+  font-size: 0.7rem; font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ai-opt-chip.is-active {
+  background: rgba(167,139,250,0.2);
+  border-color: rgba(167,139,250,0.5);
+  color: #a78bfa; font-weight: 600;
+}
+.ai-opt-chip:active { background: rgba(167,139,250,0.15); }
+/* ── Opt Panel layout ── */
+#floatAiOptPanel { min-width: 200px; max-width: 240px; }
+.aop-section { padding: 0.35rem 0.8rem; }
+.aop-divider {
+  height: 1px; margin: 0 0.6rem;
+  background: rgba(167,139,250,0.1);
+}
+.aop-label {
+  font-size: 0.62rem; color: #666;
+  letter-spacing: 0.05em; margin-bottom: 0.3rem;
+}
+.aop-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.aop-btn {
+  display: flex; align-items: center; gap: 0.5rem;
+  width: 100%; padding: 0.35rem 0.2rem;
+  border: none; background: transparent;
+  color: rgba(200,195,220,0.85);
+  font-size: 0.78rem; font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.aop-btn:active { background: rgba(167,139,250,0.12); border-radius: 6px; }
+.aop-btn.is-active { color: #7ee787; }
+.aop-icon { width: 1.1rem; text-align: center; flex-shrink: 0; }
+.aop-tag {
+  margin-left: auto;
+  font-size: 0.6rem; color: #666;
+  padding: 1px 5px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+}
+.aop-btn.is-active .aop-tag {
+  color: #7ee787;
+  border-color: rgba(126,231,135,0.3);
+}
+/* Model panel: cap height + internal scroll */
+#floatAiModelPanel {
+  max-height: 60vh;
+  overflow: hidden;
+}
+#floatAiModelPanel .ai-model-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(167,139,250,0.25) transparent;
+}
+#floatAiModelPanel .ai-model-list::-webkit-scrollbar { width: 4px; }
+#floatAiModelPanel .ai-model-list::-webkit-scrollbar-thumb {
+  background: rgba(167,139,250,0.3); border-radius: 4px;
+}
+/* Disabled items: compact + dim */
+.ai-model-opt.is-disabled {
+  padding-top: 0.2rem; padding-bottom: 0.2rem;
+  font-size: 0.70rem;
+  opacity: 0.3 !important;
+}
+#floatAiModelPanel .tp-header,
+#floatAiAttachPanel .tp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+  color: rgba(167, 139, 250, 0.7);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.10);
+  cursor: grab; user-select: none; -webkit-user-select: none;
+}
+#floatAiModelPanel .ai-model-tier,
+#floatAiModelPanel .ai-model-prov {
+  cursor: grab; user-select: none; -webkit-user-select: none;
+}
+/* ── Accordion model panel ── */
+.amp-tier {
+  padding: 0.3rem 0.8rem 0.15rem;
+  color: #666; font-size: 0.65em;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  cursor: grab; user-select: none; -webkit-user-select: none;
+}
+.amp-hr {
+  border: 0; border-top: 1px solid rgba(255,255,255,0.06); margin: 3px 0;
+}
+.amp-group { /* provider accordion wrapper */ }
+.amp-toggle {
+  display: flex; align-items: center; gap: 0.35rem;
+  width: 100%; padding: 0.3rem 0.8rem;
+  border: none; background: transparent;
+  font-size: 0.8rem; font-weight: 600; font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.amp-toggle:active { background: rgba(255,255,255,0.04); }
+.amp-arrow {
+  font-size: 0.65rem; opacity: 0.5; width: 0.7rem; text-align: center;
+}
+.amp-models {
+  /* collapsed by default via inline style */
+}
+#floatAiModelPanel .tp-btn,
+#floatAiAttachPanel .tp-btn {
+  display: flex; align-items: center; gap: 0.5rem;
+  width: 100%; padding: 0.4rem 0.8rem;
+  border: none; background: transparent;
+  color: rgba(200, 195, 220, 0.85);
+  font-size: 0.78rem; font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#floatAiModelPanel .tp-btn:active,
+#floatAiAttachPanel .tp-btn:active {
+  background: rgba(167, 139, 250, 0.15);
+}
+.ai-model-opt.is-selected {
+  color: #a78bfa !important;
+  font-weight: 700;
+}
+.ai-model-opt.is-selected .tp-icon {
+  color: #a78bfa !important;
+}
+
+/* ── AI Attach Preview Bar ── */
+#aiAttachPreview {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 5px 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: rgba(167, 139, 250, 0.08);
+  border-top: 1px solid rgba(167, 139, 250, 0.25);
+  scrollbar-width: none;
+}
+#aiAttachPreview::-webkit-scrollbar { display: none; }
+
+.ai-attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 12px;
+  background: rgba(167, 139, 250, 0.15);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  font-size: 11px;
+  font-family: -apple-system, sans-serif;
+  color: rgba(230, 225, 245, 0.85);
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 180px;
+  cursor: default;
+}
+.ai-attach-chip .chip-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.ai-attach-chip .chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ai-attach-chip .chip-close {
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 0 0 2px;
+  color: rgba(255, 120, 120, 0.7);
+  cursor: pointer;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ai-attach-chip .chip-close:active {
+  color: #ff6b6b;
+}
+
+/* ══════════════════════════════════════════════════════════
+   §4-6 MODE SEGMENT  [edit │ chat │ job]
+   - 한 묶음 테두리 + 칸 사이 구분선 + 줄바꿈 방지(nowrap)
+   - 3상태(JS가 B2b에서 토글): .seg-active(강조) / .seg-has(또렷) / .seg-empty(dim)
+   - 모드색: edit=초록 #4caf50 / chat=보라 #a78bfa / job=파랑 #79c0ff
+   - 글자는 항상 또렷(글자점등 ● 폐기). 상태는 보더/배경으로만.
+═══════════════════════════════════════════════════════════ */
+.rp-seg {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;            /* job 칸 줄바꿈 방지 */
+  border: 1px solid #2a3340;
+  border-radius: 7px;
+  overflow: hidden;               /* 칸 모서리를 컨테이너에 맞춤 */
+}
+/* 세그먼트 안의 칸 공통 — 개별 보더/라운드 제거, 칸 사이만 구분선 */
+.rp-seg > #btnRunEdit,
+.rp-seg > #btnAiChat,
+.rp-seg > #btnAiJobToggle {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  margin: 0 !important;
+  padding: 0.18rem 0.6rem !important;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  color: #6b7785;                 /* 기본(미지정) — dim보다 약간 위. 상태로 덮음 */
+}
+/* 칸 사이 구분선 (첫 칸 제외) */
+.rp-seg > #btnAiChat,
+.rp-seg > #btnAiJobToggle {
+  border-left: 1px solid #2a3340 !important;
+}
+
+/* ── 데이터 없음: dim (chat/job만 JS가 부여) ── */
+.rp-seg > .seg-empty {
+  color: #8b97a6 !important;   /* copy/clear(#7a8a9a) 이상으로 또렷 */
+}
+/* ── 데이터 있음·비활성: 모드색 또렷 ── */
+.rp-seg > #btnRunEdit.seg-has  { color: #4caf50 !important; }
+.rp-seg > #btnAiChat.seg-has   { color: #a78bfa !important; }
+.rp-seg > #btnAiJobToggle.seg-has { color: #79c0ff !important; }
+
+/* ── 활성 칸: 모드색 + 배경 강조 + 글로우 (글자 또렷) ── */
+.rp-seg > #btnRunEdit.seg-active {
+  color: #4caf50 !important; font-weight: 600;
+  background: rgba(76,175,80,0.16) !important;
+  box-shadow: inset 0 0 0 1px rgba(76,175,80,0.55);
+}
+.rp-seg > #btnAiChat.seg-active {
+  color: #a78bfa !important; font-weight: 600;
+  background: rgba(167,139,250,0.16) !important;
+  box-shadow: inset 0 0 0 1px rgba(167,139,250,0.55);
+}
+.rp-seg > #btnAiJobToggle.seg-active {
+  color: #79c0ff !important; font-weight: 600;
+  background: rgba(121,192,255,0.16) !important;
+  box-shadow: inset 0 0 0 1px rgba(121,192,255,0.55);
+}
+
+/* 1단 폭 압축: 세그먼트 칸 padding 살짝 축소 (§4-6 한 줄 고정 보조) */
+.rp-seg > #btnRunEdit,
+.rp-seg > #btnAiChat,
+.rp-seg > #btnAiJobToggle {
+  padding: 0.16rem 0.45rem !important;
+  font-size: 0.68rem;
+}
+
+/* STEP B ①a: 1단 새 슬롯 — ☰(좌) / ⬓·✕(우). 한 줄 유지. */
+.rp-tools-toggle,
+.rp-view-toggle {
+  background: transparent; border: 0; cursor: pointer;
+  color: #8b97a6; font-size: 14px; line-height: 1;
+  padding: 3px 5px; white-space: nowrap;
+  border-radius: 6px; transition: color .12s, background .12s;
+}
+/* ①c-3: 편집뷰(⬒) 활성 = 청록 + 옅은 배경(뷰 버튼 고유색, 모드색과 구분). 출력뷰(⬓)=기본 회색. */
+.rp-view-toggle.vw-on {
+  color: #4ec9b0;
+  background: rgba(78, 201, 176, 0.14);
+}
+.rp-tools-toggle { margin-right: 0; }                /* ☰–세그먼트 분리 간격 (구분선이 대신함) */
+.rp-tools-toggle::after {                            /* ┊ 구분선 */
+  content: '\2506'; color: #3a4250; margin-left: 3px;
+}
+.rp-view-toggle { margin-left: 2px; margin-right: 4px; }   /* clear 쪽으로 당기고 ✕와 띄움 */
+/* ✕(닫기)만 약빨강 — 끝 두 개 시각 분리 */
+#runPanelInner .rp-actions .rp-close { color: #d98b8b; }
+/* 라벨 폭 0 (모드명은 세그먼트 보더색 전담) */
+#runPanelInner .rp-title { width: 0; padding: 0; overflow: hidden; }
+
+/* === META section cards (General USEKIT Project) === */
+#metaSection .aop-label { margin-top: 4px; }
+.meta-cards { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.meta-card { border: 1px solid #21262d; border-radius: 8px; background: #0d1117; overflow: hidden; }
+.meta-card.sec-on { border-color: #2b4a6f; background: rgba(121,192,255,0.04); }
+.meta-card-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+.meta-chk { background: none; border: 0; color: #768390; font-size: 1rem; cursor: pointer; padding: 0; line-height: 1; }
+.meta-card.sec-on .meta-chk { color: #79c0ff; }
+.meta-name { font-size: 0.85rem; font-weight: 600; color: #adbac7; cursor: pointer; flex: 0 0 auto; }
+.meta-dest { font-size: 0.66rem; color: #586069; margin-left: 4px; }
+.meta-exp { margin-left: auto; background: none; border: 0; color: #768390; font-size: 0.9rem; cursor: pointer; }
+.meta-edit {
+  margin-left: 10px; background: none; border: 1px solid #30363d; border-radius: 6px;
+  color: #79c0ff; font-size: 0.72rem; font-weight: 600; padding: 3px 10px; cursor: pointer;
+}
+.meta-edit:active { background: rgba(121,192,255,0.12); }
+.meta-preview {
+  margin: 0 10px 10px; padding: 8px 10px; background: #010409;
+  border: 1px solid #21262d; border-radius: 6px; color: #8b949e;
+  font-family: ui-monospace, monospace; font-size: 0.72rem; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto;
+}
+.meta-hint { padding: 0 10px 6px 32px; font-size: 0.66rem; color: #586069; line-height: 1.4; }
+.meta-body {
+  width: calc(100% - 20px); margin: 0 10px 10px; min-height: 120px; resize: vertical;
+  background: #010409; color: #c9d1d9; border: 1px solid #21262d; border-radius: 6px;
+  padding: 8px 10px; font-family: ui-monospace, monospace; font-size: 0.76rem; line-height: 1.5;
+}
+.meta-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+/* Master OFF: cards preserved + interactive, but visually inactive + hint */
+.meta-cards.master-off { opacity: 0.5; position: relative; }
+.meta-cards.master-off::before {
+  content: "Disabled by master switch"; display: block;
+  font-size: 0.66rem; color: #d29922; text-align: center;
+  padding: 4px 0 6px;
+}
+.meta-btn { flex: 1; padding: 8px 0; border-radius: 8px; border: 1px solid #30363d;
+  background: #21262d; color: #adbac7; font-size: 0.76rem; font-weight: 600; cursor: pointer; }
+.meta-reset { color: #d29922; }
+.meta-save  { background: #238636; border-color: #2ea043; color: #fff; }
+
+/* META section editor — full-screen overlay (tap a card to edit) */
+.me-modal { position: fixed; inset: 0; z-index: 100001; }
+.me-backdrop { position: absolute; inset: 0; background: rgba(1,4,9,0.72); }
+.me-dialog {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  width: min(94vw, 620px); height: min(82vh, 760px);
+  display: flex; flex-direction: column;
+  background: #161b22; border: 1px solid #30363d; border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6); overflow: hidden;
+}
+.me-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #21262d; }
+.me-title { font-size: 1rem; font-weight: 700; color: #e6edf3; }
+.me-dest { font-size: 0.66rem; color: #586069; padding: 2px 8px; border: 1px solid #21262d; border-radius: 99px; }
+.me-x { margin-left: auto; background: none; border: 0; color: #768390; font-size: 1.1rem; cursor: pointer; }
+.me-hint { padding: 8px 16px; font-size: 0.7rem; color: #586069; border-bottom: 1px solid #21262d; line-height: 1.45; }
+.me-text {
+  flex: 1; resize: none; margin: 0; border: 0; outline: none;
+  background: #0d1117; color: #c9d1d9;
+  padding: 14px 16px; font-family: ui-monospace, monospace; font-size: 0.85rem; line-height: 1.6;
+}
+.me-actions { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid #21262d; }
+.me-btn { flex: 1; padding: 11px 0; border-radius: 9px; border: 1px solid #30363d;
+  background: #21262d; color: #adbac7; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+.me-done { background: #238636; border-color: #2ea043; color: #fff; }
+
+/* card head is tappable to open the editor */
+.meta-card-head { cursor: pointer; }
+.meta-chk { cursor: pointer; }
+
+/* OPTIONS: General USEKIT Project active chip */
+#aiOptProjMeta.is-active { background: rgba(121,192,255,0.10); }
+#aiOptProjMeta.is-active .aop-tag { color: #79c0ff; }
+
+/* === EOF === */

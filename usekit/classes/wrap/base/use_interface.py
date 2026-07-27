@@ -15,6 +15,9 @@ Unified interface for initializing USEKIT across different platforms:
 Examples:
     >>> from usekit import use
     
+    # Full interactive setup
+    >>> use.setup()
+    
     # Termux setup
     >>> use.termux()
     
@@ -26,6 +29,35 @@ Examples:
 """
 
 from typing import Dict, Optional
+
+
+def setup(verbose: bool = True, interactive: bool = True) -> bool:
+    """
+    Full interactive setup wizard for USEKIT workspace.
+    
+    Creates project structure, sys_project.yaml, and validates environment.
+    
+    Args:
+        verbose: Show detailed output
+        interactive: Allow user input prompts
+    
+    Returns:
+        bool: True if setup completed successfully
+    
+    Examples:
+        >>> from usekit import use
+        >>> use.setup()
+        [USEKIT SETUP]
+        ...
+        [USEKIT] Setup complete!
+    """
+    try:
+        from usekit.classes.common.setup.helper_setup import setup as run_setup
+        return run_setup(verbose=verbose, interactive=interactive)
+    except ImportError as e:
+        if verbose:
+            print(f"[ERROR] Failed to import setup module: {e}")
+        return False
 
 
 def termux(verbose: bool = True, interactive: bool = True) -> bool:
@@ -189,37 +221,32 @@ def help():
 ║                    USEKIT Setup Guide                        ║
 ╚══════════════════════════════════════════════════════════════╝
 
+Quick Start:
+────────────────────────────────────────────────────────────────
+  >>> from usekit import use
+  >>> use.setup()            # Interactive workspace setup
+
+  This will:
+    • Detect your environment (Termux/Colab/Local)
+    • Check core dependencies
+    • Create project structure
+    • Generate sys_project.yaml
+    • Validate environment
+
 Platform-Specific Setup:
 ────────────────────────────────────────────────────────────────
 
 [Termux (Android)]
-  Setup external storage access:
-    >>> from usekit import use
-    >>> use.termux()
-  
-  This will:
-    • Request Android storage permission
-    • Setup /storage/emulated/0 access
-    • Create minimal configuration
+    >>> use.termux()         # Storage permission setup
 
 [Google Colab]
-  Setup persistent Drive storage:
-    >>> from usekit import use
-    >>> use.colab()
-  
-  This will:
-    • Check Google Drive mount status
-    • Install to Drive (persistent) or /content (volatile)
-    • Create .env and sys_const.yaml for editing
-
-[Local Development]
-  No setup needed - just import and use:
-    >>> import usekit as u
-    >>> data = u.rjb("config")
+    >>> use.colab()          # Drive integration setup
 
 Common Commands:
 ────────────────────────────────────────────────────────────────
+  use.setup()     - Full interactive setup wizard
   use.check()     - Check environment status
+  use.editor()    - Launch editor
   use.termux()    - Setup Termux environment
   use.colab()     - Setup Colab environment
   use.help()      - Show this help message
@@ -230,6 +257,7 @@ For more info: https://github.com/yourusername/usekit
 
 # Convenience exports
 __all__ = [
+    'setup',
     'termux',
     'colab', 
     'check',

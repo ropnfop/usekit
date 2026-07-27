@@ -85,6 +85,7 @@
     // 패널 열기 (edit 모드가 아닐 때만 overlay로)
     if (!_runEditActive) outPanel.classList.add('is-open');
     btnOut.classList.add('is-active');
+    _ensureDock2Filled();   // 고정 2단 보장 (뷰 무관)
 
     const esc = s => s
       .replace(/&/g,'&amp;')
@@ -213,6 +214,7 @@
       setTimeout(() => {
         outPanel.classList.add('is-open');
         btnOut.classList.add('is-active');
+        _ensureDock2Filled();   // 고정 2단 보장
         const output = document.getElementById('runOutput');
         if (output) output.scrollTop = output.scrollHeight;
       }, 150);
@@ -352,7 +354,7 @@
       return;
     }
     const id = target?.id || target?.closest?.('[id]')?.id;
-    if      (id === 'floatBtnRun'    || target?.closest?.('#floatBtnRun'))    { if (_cliMode) _doExecCli(); else _doExec(); }
+    if      (id === 'floatBtnRun'    || target?.closest?.('#floatBtnRun'))    { if (window.AiChat?.isChat) { window.AiChat.run(); return; } if (_shellMode) _doExecShell(); else if (_cliMode) _doExecCli(); else _doExec(); }
     else if (id === 'floatBtnOutput' || target?.closest?.('#floatBtnOutput')) { _toggleOutput(); }
     else if (id === 'floatBtnTool'   || target?.closest?.('#floatBtnTool'))   { _toggleTool(); }
   }
@@ -423,12 +425,13 @@
     });
   }
   _bindTpGroupToggle('floatTpRunToggle',  'floatTpRunSection',  'floatTpRunArrow');
-  _bindTpGroupToggle('floatTpEditToggle', 'floatTpEditSection', 'floatTpEditArrow');
+  _bindTpGroupToggle('floatTpModeToggle', 'floatTpModeSection', 'floatTpModeArrow');
   _bindTpGroupToggle('floatTpMenuToggle', 'floatTpMenuSection', 'floatTpMenuArrow');
 
   // Run 그룹 — 기존 동작 유지
   document.getElementById('floatTpRun')?.addEventListener('click', () => {
     toolPanel.style.display = 'none'; btnTool.classList.remove('is-active');
+    if (window.AiChat?.isChat) { window.AiChat.run(); return; }
     if (_cliMode) { _doExecCli(); return; }
     // Show live ns indicator
     const dot = document.getElementById('floatTpLiveDot');
@@ -438,17 +441,20 @@
   });
   document.getElementById('floatTpPrint')?.addEventListener('click', () => {
     toolPanel.style.display = 'none'; btnTool.classList.remove('is-active');
+    if (window.AiChat?.isChat) { window.AiChat.run(); return; }
     if (_cliMode) { _doExecCli(); return; }
     if (window.runPrint) window.runPrint();
     else console.warn('[Tool] runPrint not ready');
   });
   document.getElementById('floatTpLine')?.addEventListener('click', () => {
+    if (window.AiChat?.isChat) { window.AiChat.line(); return; }
     if (_cliMode) { _doExecCli(); return; }
     // Line Run은 연타 사용이 주 패턴이라 메뉴 유지
     if (window.runLine) window.runLine();
     else console.warn('[Tool] runLine not ready');
   });
   document.getElementById('floatTpBlock')?.addEventListener('click', () => {
+    if (window.AiChat?.isChat) { window.AiChat.block(); return; }
     if (_cliMode) { _doExecCli(); return; }
     // Current Block도 연타 사용 패턴이라 메뉴 유지
     if (window.runBlock) window.runBlock();
@@ -456,6 +462,7 @@
   });
   document.getElementById('floatTpFileTmp')?.addEventListener('click', () => {
     toolPanel.style.display = 'none'; btnTool.classList.remove('is-active');
+    if (window.AiChat?.isChat) { window.AiChat.run(); return; }
     if (_cliMode) { _doExecCli(); return; }
     _doExecFileTmp();
   });
@@ -479,85 +486,26 @@
     }
   });
 
-  // ── Edit 그룹 ─────────────────────────────────────────────
-  //   공통: 선택 있으면 선택만, 없으면 전체 문서 대상
-  //   팝업은 실행 후 닫음 (Copy Tool 패턴)
-  // ────────────────────────────────────────────────────────────
+  // ── Reload usekit ─────────────────────────────────────────
+  document.getElementById('floatTpReload')?.addEventListener('click', async () => {
+    toolPanel.style.display = 'none'; btnTool.classList.remove('is-active');
+    try {
+      const res = await fetch('/api/reload_usekit', { method: 'POST' });
+      const d = await res.json();
+      if (d.ok) {
+        _appendOutput('RELOAD', { stdout: d.message + '\n' });
+      } else {
+        _appendOutput('RELOAD', { error: d.error || 'Reload failed' });
+      }
+    } catch (e) {
+      _appendOutput('RELOAD', { error: 'Reload failed: ' + e.message });
+    }
+  });
+
   function _closeToolPanel() {
     toolPanel.style.display = 'none';
     btnTool.classList.remove('is-active');
   }
-
-  // 현재 선택 범위 반환. 선택 없으면 전체 문서 범위.
-  function _getEditRange(view) {
-    const sel = view.state.selection.main;
-    if (sel.from !== sel.to) return { from: sel.from, to: sel.to, hasSelection: true };
-    return { from: 0, to: view.state.doc.length, hasSelection: false };
-  }
-
-  // Case transform — 순환 3단계: UPPER → lower → Title → UPPER...
-  // 상태는 IIFE 변수로 유지 (다음 탭에서 다음 단계로)
-  let _caseStage = 0; // 0=UPPER, 1=lower, 2=Title
-  document.getElementById('floatTpCaseTransform')?.addEventListener('click', () => {
-    _closeToolPanel();
-    const view = window.Editor?.get?.();
-    if (!view) return;
-    const { from, to } = _getEditRange(view);
-    if (from === to) return;
-    const src = view.state.sliceDoc(from, to);
-    let out;
-    if (_caseStage === 0) {
-      out = src.toUpperCase();
-    } else if (_caseStage === 1) {
-      out = src.toLowerCase();
-    } else {
-      // Title case: 각 단어의 첫 글자만 대문자 (공백/탭/줄바꿈 기준)
-      out = src.toLowerCase().replace(/(^|\s)(\S)/g, (_, ws, ch) => ws + ch.toUpperCase());
-    }
-    _caseStage = (_caseStage + 1) % 3;
-    if (out === src) return;
-    view.dispatch({
-      changes:   { from, to, insert: out },
-      selection: { anchor: from, head: from + out.length },
-      userEvent: 'input.replace',
-    });
-  });
-
-  // Tab → Space — 탭 1개를 공백 4개로 변환
-  document.getElementById('floatTpTabToSpace')?.addEventListener('click', () => {
-    _closeToolPanel();
-    const view = window.Editor?.get?.();
-    if (!view) return;
-    const { from, to } = _getEditRange(view);
-    if (from === to) return;
-    const src = view.state.sliceDoc(from, to);
-    const tabSize = view.state.tabSize || 4;
-    const spaces = ' '.repeat(tabSize);
-    if (!src.includes('\t')) return;
-    const out = src.replace(/\t/g, spaces);
-    view.dispatch({
-      changes:   { from, to, insert: out },
-      selection: { anchor: from, head: from + out.length },
-      userEvent: 'input.replace',
-    });
-  });
-
-  // Trim trailing — 각 라인 끝 공백/탭 제거
-  document.getElementById('floatTpTrimTrailing')?.addEventListener('click', () => {
-    _closeToolPanel();
-    const view = window.Editor?.get?.();
-    if (!view) return;
-    const { from, to } = _getEditRange(view);
-    if (from === to) return;
-    const src = view.state.sliceDoc(from, to);
-    const out = src.replace(/[ \t]+$/gm, '');
-    if (out === src) return;
-    view.dispatch({
-      changes:   { from, to, insert: out },
-      selection: { anchor: from, head: from + out.length },
-      userEvent: 'input.replace',
-    });
-  });
 
   // ── Layout 토글 (세로 ↔ 가로) ── 위치 유지
   function _setLayout(orientation, opts) {
@@ -702,124 +650,121 @@
       window.visualViewport.addEventListener('resize', _runVvHandler);
     }
 
-    if (btn) { btn.textContent = 'edit ●'; btn.classList.add('is-active'); }
+    if (btn) { btn.textContent = 'edit'; }
+    // edit 활성 표시는 보더상태(_updateSegState)가 담당 — 글자점등 폐기(§4-6)
+    window.AiChat?.refreshSegState?.();
 
     // 미니 실행 패널 표시
     _showMiniRun();
   }
 
-  // ── 미니 실행 패널 (edit 모드 전용) ──
-  let _miniRunEl = null;
-  let _miniCollapsed = false;
-  let _miniPos = { x: -1, y: -1 };  // 세션 내 위치 기억
+  // ── 2단 도구바 (고정 오버레이 / 붙박이) ──
+  // STEP B ②: 기존 floating miniRunPanel(position:fixed + drag)을 폐기하고,
+  // #runPanelInner 안 .rp-header 바로 아래에 붙박이 2단(#rpDock2)으로 고정한다.
+  // overlay/inline 모드 모두 runPanelInner 통째 이동이므로 자동으로 따라온다.
+  let _dock2Collapsed = false;
 
+  // Ensure the fixed dock-2 container exists right under the header.
+  function _ensureDock2() {
+    const inner = document.getElementById('runPanelInner');
+    if (!inner) return null;
+    let dock = document.getElementById('rpDock2');
+    if (dock) return dock;
+    dock = document.createElement('div');
+    dock.id = 'rpDock2';
+    dock.className = 'rp-dock2';
+    const header = inner.querySelector('.rp-header');
+    const output = document.getElementById('runOutput');
+    // place between header and output (anchored, height fixed)
+    if (header && header.nextSibling) inner.insertBefore(dock, header.nextSibling);
+    else if (output) inner.insertBefore(dock, output);
+    else inner.appendChild(dock);
+    return dock;
+  }
+
+  // Render the EDIT-mode tools (Run / Line / Block) into the fixed dock.
+  // (chat/job mode tools are rendered by float_ai.js into the same #rpDock2.)
   function _showMiniRun() {
-    if (_miniRunEl) return;
+    const dock = _ensureDock2();
+    if (!dock) return;
+    dock.innerHTML = '';
+    dock.dataset.mode = 'edit';
 
-    const el = document.createElement('div');
-    el.id = 'miniRunPanel';
-    el.style.cssText = `
-      position:fixed; z-index:10000;
-      background:rgba(30,34,42,0.92); border:1px solid rgba(76,175,80,0.5);
-      border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.35);
-      padding:0; user-select:none; touch-action:none;
-      font-family:-apple-system,sans-serif; font-size:13px;
-      backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-    `;
-
-    // 헤더 (드래그 핸들 + 접기)
-    const hdr = document.createElement('div');
-    hdr.style.cssText = `
-      display:flex; align-items:center; justify-content:space-between;
-      padding:5px 8px; cursor:grab;
-      border-bottom:1px solid rgba(255,255,255,0.08);
-      color:rgba(255,255,255,0.5); font-size:10px; font-weight:600;
-      letter-spacing:0.05em;
-    `;
-    hdr.textContent = 'RUN';
-
-    const foldBtn = document.createElement('span');
-    foldBtn.textContent = '▾';
-    foldBtn.style.cssText = 'cursor:pointer; font-size:12px; padding:0 4px; color:rgba(255,255,255,0.4);';
-    hdr.appendChild(foldBtn);
-    el.appendChild(hdr);
-
-    // 버튼 영역
     const body = document.createElement('div');
     body.className = 'minirun-body';
-    body.style.cssText = 'display:flex; gap:2px; padding:4px 6px;';
 
     const mkBtn = (icon, label, color, fn) => {
       const b = document.createElement('button');
-      b.innerHTML = `<span style="font-size:11px;">${icon}</span> ${label}`;
-      b.style.cssText = `
-        flex:1; padding:6px 4px; border:none; border-radius:5px;
-        background:rgba(255,255,255,0.06); color:${color};
-        font-size:11px; font-weight:500; cursor:pointer;
-        white-space:nowrap;
-      `;
+      b.innerHTML = icon ? `<span class="mr-ico">${icon}</span> ${label}` : label;
+      b.style.color = color;
       b.addEventListener('touchend', e => { e.preventDefault(); e.stopPropagation(); fn(); });
       b.addEventListener('mouseup', e => { e.stopPropagation(); fn(); });
       return b;
     };
 
-    body.appendChild(mkBtn('▶', 'Run', '#7ee787', () => { if (_cliMode) _doExecCli(); else _doExec(); }));
-    body.appendChild(mkBtn('~', 'Line', '#79c0ff', () => { if (_cliMode) _doExecCli(); else if (window.runLine) window.runLine(); }));
-    body.appendChild(mkBtn('◻', 'Block', '#d2a8ff', () => { if (_cliMode) _doExecCli(); else if (window.runBlock) window.runBlock(); }));
-    el.appendChild(body);
+    // [⟩Shell] 셸 모드 토글 — 맨 앞(CLI/REPL 전환 잦음). 활성 시 강조.
+    const shellBtn = mkBtn('', 'Shell', '#f0883e', () => {
+      _toggleShellMode();
+      _showMiniRun();   // 라벨/활성표시 갱신
+    });
+    shellBtn.style.color = '';   // 색은 CSS(.mr-status / .shell-on)가 소유
+    shellBtn.classList.add('mr-status');
+    shellBtn.classList.toggle('shell-on', !!_shellMode);
+    body.appendChild(shellBtn);
 
-    // 접힌 상태 캡션
-    const cap = document.createElement('div');
-    cap.className = 'minirun-cap';
-    cap.innerHTML = '<span style="color:#7ee787;">▶</span> <span style="color:#79c0ff;">~</span> <span style="color:#d2a8ff;">◻</span>';
-    cap.style.cssText = `
-      display:none; padding:6px 10px; cursor:pointer;
-      font-size:13px; letter-spacing:4px; text-align:center;
-    `;
-    el.appendChild(cap);
+    const runBtn = mkBtn('\u25B6', 'Run', '#7ee787', () => { if (window.AiChat?.isChat) { window.AiChat.run(); return; } if (_shellMode) _doExecShell(); else if (_cliMode) _doExecCli(); else _doExec(); });
+    runBtn.classList.add('mr-run');
+    body.appendChild(runBtn);
+    const lineBtn = mkBtn('~', 'Line', '#79c0ff', () => { if (window.AiChat?.isChat) { window.AiChat.line(); return; } if (_cliMode || _shellMode) _doExecCli(); else if (window.runLine) window.runLine(); });
+    lineBtn.classList.add('mr-line');
+    body.appendChild(lineBtn);
+    const blockBtn = mkBtn('\u25FB', 'Block', '#d2a8ff', () => { if (window.AiChat?.isChat) { window.AiChat.block(); return; } if (_cliMode || _shellMode) _doExecCli(); else if (window.runBlock) window.runBlock(); });
+    blockBtn.classList.add('mr-block');
+    body.appendChild(blockBtn);
+    dock.appendChild(body);
 
-    // 접기/펼치기
-    const toggleFold = () => {
-      _miniCollapsed = !_miniCollapsed;
-      body.style.display = _miniCollapsed ? 'none' : 'flex';
-      cap.style.display = _miniCollapsed ? 'block' : 'none';
-      hdr.style.borderBottom = _miniCollapsed ? 'none' : '1px solid rgba(255,255,255,0.08)';
-      foldBtn.textContent = _miniCollapsed ? '▸' : '▾';
-    };
-    foldBtn.addEventListener('click', e => { e.stopPropagation(); toggleFold(); });
-    cap.addEventListener('click', e => { e.stopPropagation(); toggleFold(); });
-
-    // 드래그
-    let dragging = false, dx = 0, dy = 0;
-    const onStart = (cx, cy) => { dragging = true; const r = el.getBoundingClientRect(); dx = cx - r.left; dy = cy - r.top; hdr.style.cursor = 'grabbing'; };
-    const onMove = (cx, cy) => { if (!dragging) return; el.style.left = (cx - dx) + 'px'; el.style.top = (cy - dy) + 'px'; el.style.right = 'auto'; el.style.bottom = 'auto'; };
-    const onEnd = () => { if (!dragging) return; dragging = false; hdr.style.cursor = 'grab'; const r = el.getBoundingClientRect(); _miniPos = { x: r.left, y: r.top }; };
-    hdr.addEventListener('touchstart', e => { e.preventDefault(); const t = e.touches[0]; onStart(t.clientX, t.clientY); }, { passive: false });
-    document.addEventListener('touchmove', e => { if (!dragging) return; const t = e.touches[0]; onMove(t.clientX, t.clientY); }, { passive: true });
-    document.addEventListener('touchend', () => onEnd());
-    hdr.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX, e.clientY); });
-    document.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
-    document.addEventListener('mouseup', () => onEnd());
-
-    document.body.appendChild(el);
-    _miniRunEl = el;
-
-    // 위치 설정
-    if (_miniPos.x >= 0) {
-      el.style.left = _miniPos.x + 'px';
-      el.style.top = _miniPos.y + 'px';
-    } else {
-      // 기본: output 헤더 우측 위
-      el.style.right = '12px';
-      el.style.bottom = '50%';
-    }
+    _applyDock2Collapsed(dock);
   }
 
+  // Collapse/expand the dock body (controlled from the menu / ☰, not by floating).
+  function _applyDock2Collapsed(dock) {
+    dock = dock || document.getElementById('rpDock2');
+    if (!dock) return;
+    dock.classList.toggle('is-collapsed', _dock2Collapsed);
+  }
+
+  function _setDock2Collapsed(v) {
+    _dock2Collapsed = !!v;
+    _applyDock2Collapsed();
+  }
+
+  function _toggleDock2Collapsed() { _setDock2Collapsed(!_dock2Collapsed); }
+
   function _hideMiniRun() {
-    if (_miniRunEl) {
-      _miniRunEl.remove();
-      _miniRunEl = null;
+    const dock = document.getElementById('rpDock2');
+    if (dock) dock.innerHTML = '';
+  }
+
+  // 패널이 열릴 때 2단이 비어있지 않도록 보장. 모드별 렌더 주체:
+  //  - edit  : 여기서 Run/Line/Block 렌더
+  //  - chat/job : float_ai.js 가 _updateMiniRunForChat 로 렌더 → 위임(있으면 호출).
+  function _ensureDock2Filled() {
+    const dock = _ensureDock2();
+    if (!dock) return;
+    const isChat = !!window.AiChat?.isChat;
+    if (isChat) {
+      // chat/job 도구는 float_ai 가 소유. 다음 중 하나면 다시 그린다:
+      //   - dock 이 비었다 (_hideMiniRun 직후 등)
+      //   - dock 이 아직 edit 도구를 들고 있다 (dataset.mode==='edit')
+      //     → edit→chat 전환 직후 edit 의 Run/Line/Block 이 남는 BUG2 경로.
+      //   그 외(이미 chat/job 도구로 채워짐)엔 collapse 진실만 화면에 강제 동기화.
+      const wantMode = (window.AiChat?.subMode === 'job') ? 'job' : 'chat';
+      if (!dock.firstChild || dock.dataset.mode !== wantMode) window.AiChat?.refreshDock2?.();
+      else _applyDock2Collapsed(dock);
+      return;
     }
+    // edit 모드: 항상 Run/Line/Block 보장.
+    if (dock.dataset.mode !== 'edit' || !dock.firstChild) _showMiniRun();
   }
 
   function _exitRunEditMode(reopenPanel = true) {
@@ -854,10 +799,15 @@
 
     // editor-host 복원
     if (host) { host.style.flex = ''; host.style.minHeight = ''; }
-    if (btn) { btn.textContent = 'edit'; btn.classList.remove('is-active'); }
+    if (btn) { btn.textContent = 'edit'; }
+    window.AiChat?.refreshSegState?.();
 
-    // 미니 실행 패널 제거
-    _hideMiniRun();
+    // 미니 실행 패널 정리.
+    // BUG2 근본: chat 으로 빠지는 길(_chatRun → exitEditMode)에서 여기 _hideMiniRun 이
+    //   dock 을 통째로 비웠는데 chat 도구를 다시 안 그려 2단이 빈 채로 남았다.
+    //   → chat 모드면 chat 도구를 다시 채우고, 그 외엔 기존대로 비운다.
+    if (window.AiChat?.isChat) _ensureDock2Filled();
+    else _hideMiniRun();
   }
 
   // ── Output clear / close / edit / copy ──
@@ -890,22 +840,25 @@
   document.addEventListener('DOMContentLoaded', () => {
     const host = document.getElementById('editor-host');
     if (host) {
-      host.addEventListener('mousedown', () => {
+      const _hostCloseOverlay = () => {
         if (_runEditActive) return;
         const p = document.getElementById('runPanel');
         if (p && p.classList.contains('is-open')) {
+          // chat 모드: overlay 닫고 inline 복귀
+          if (window.AiChat?.isChat) {
+            p.classList.remove('is-open');
+            btnOut.classList.remove('is-active');
+            _enterRunEditMode();
+            // chat 모드 UI 복원 (edit 활성 덮어쓰기)
+            if (window.AiChat._updateTabUI) window.AiChat._updateTabUI();
+            return;
+          }
           p.classList.remove('is-open');
           btnOut.classList.remove('is-active');
         }
-      });
-      host.addEventListener('touchstart', () => {
-        if (_runEditActive) return;
-        const p = document.getElementById('runPanel');
-        if (p && p.classList.contains('is-open')) {
-          p.classList.remove('is-open');
-          btnOut.classList.remove('is-active');
-        }
-      }, { passive: true });
+      };
+      host.addEventListener('mousedown', _hostCloseOverlay);
+      host.addEventListener('touchstart', _hostCloseOverlay, { passive: true });
     }
   });
 
@@ -958,15 +911,19 @@
 
   // ── CLI 모드 ─────────────────────────────────────────────────
   let _cliMode = false;
+  let _shellMode = false;
   let _cliHistory = [];
   let _cliHistIdx = -1;
 
   function _enterCliMode() {
     _cliMode = true;
+    _shellMode = false;
     const badge = document.getElementById('cliBadge');
     if (badge) badge.style.display = 'block';
     const label = document.getElementById('floatTpCliLabel');
-    if (label) label.textContent = 'CLI ●';
+    if (label) label.textContent = 'USEKIT ●';
+    const shellLabel = document.getElementById('floatTpShellLabel');
+    if (shellLabel) shellLabel.textContent = 'Shell';
   }
 
   function _exitCliMode() {
@@ -974,13 +931,37 @@
     const badge = document.getElementById('cliBadge');
     if (badge) badge.style.display = 'none';
     const label = document.getElementById('floatTpCliLabel');
-    if (label) label.textContent = 'CLI';
+    if (label) label.textContent = 'USEKIT';
+  }
+
+  function _enterShellMode() {
+    _shellMode = true;
+    _cliMode = false;
+    const badge = document.getElementById('cliBadge');
+    if (badge) badge.style.display = 'block';
+    const label = document.getElementById('floatTpShellLabel');
+    if (label) label.textContent = 'Shell ●';
+    const cliLabel = document.getElementById('floatTpCliLabel');
+    if (cliLabel) cliLabel.textContent = 'USEKIT';
+  }
+
+  function _exitShellMode() {
+    _shellMode = false;
+    const badge = document.getElementById('cliBadge');
+    if (badge) badge.style.display = 'none';
+    const label = document.getElementById('floatTpShellLabel');
+    if (label) label.textContent = 'Shell';
   }
   let _cliPrevContent = null;
 
   function _toggleCliMode() {
     if (_cliMode) _exitCliMode();
-    else _enterCliMode();
+    else { _exitShellMode(); _enterCliMode(); }
+  }
+
+  function _toggleShellMode() {
+    if (_shellMode) _exitShellMode();
+    else { _exitCliMode(); _enterShellMode(); }
   }
 
   // CLI 모드 실행: 커서 줄 ~ 마지막 줄을 묶어서 cli 모드로 /api/exec 전송
@@ -1051,7 +1032,7 @@
 
   // CLI 히스토리 탐색 (방향키)
   document.addEventListener('keydown', e => {
-    if (!_cliMode) return;
+    if (!_cliMode && !_shellMode) return;
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       if (!_cliHistory.length) return;
       e.preventDefault();
@@ -1065,16 +1046,86 @@
     }
   });
 
-  // CLI 탭 클릭
+  // CLI 탭 클릭 (USEKIT)
   document.getElementById('floatTpCli')?.addEventListener('click', () => {
     _closeToolPanel();
     _toggleCliMode();
   });
 
-  // RUN 버튼 동작 분기 — CLI 모드에서는 _doExecCli 호출
-  // _doExec를 래핑
+  // Shell 탭 클릭
+  document.getElementById('floatTpShell')?.addEventListener('click', () => {
+    _closeToolPanel();
+    _toggleShellMode();
+  });
+
+  // Shell 모드 실행: 코드를 !로 감싸서 셸 이스케이프로 보냄
+  function _doExecShell() {
+    const view = window.Editor?.get?.();
+    if (!view) return;
+
+    const cursorPos = view.state.selection.main.head;
+    const cursorLine = view.state.doc.lineAt(cursorPos).number;
+    const totalLines = view.state.doc.lines;
+
+    const lines = [];
+    for (let i = cursorLine; i <= totalLines; i++) {
+      const lineText = view.state.doc.line(i).text;
+      if (lineText.trim()) lines.push(lineText);
+    }
+    if (!lines.length) return;
+
+    const code = lines.join('\n');
+
+    if (!_cliHistory.length || _cliHistory[_cliHistory.length - 1] !== code) {
+      _cliHistory.push(code);
+    }
+    _cliHistIdx = _cliHistory.length;
+
+    // ! 가 이미 있으면 그대로, 없으면 붙여서 셸 이스케이프로 보냄
+    const shellCode = code.startsWith('!') ? code : '!' + code;
+
+    if (!_runEditActive) { try { window.UIViewport?.blockKeyboard?.(); } catch (e) {} }
+    const bodyEl = _appendOutput('SHELL', { running: true });
+    fetch('/api/exec', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: shellCode, mode: 'exec', inputs: [], timeout: 30 }),
+    })
+    .then(r => r.json())
+    .catch(() => ({ ok: false, error: 'network_error', stdout: '', stderr: '' }))
+    .then(d => {
+      if (!bodyEl) return;
+      const esc = s => s
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/\x1b\[[0-9;]*m/g,'')
+        .replace(/\n/g,'<br>');
+      let html = '';
+      if (d.stdout) html += `<span style="color:#c9d1d9;">${esc(_fmtStdout(d.stdout))}</span>`;
+      if (d.stderr) html += `<span style="color:#f97583;">${esc(d.stderr)}</span>`;
+      if (d.error && !d.ok) html += `<span style="color:#ff7b72;">[ERROR] ${esc(d.error)}</span>`;
+      if (!html) html = '<span style="opacity:0.35;">(no output)</span>';
+      bodyEl.innerHTML = html;
+      const output = document.getElementById('runOutput');
+      if (output) output.scrollTop = output.scrollHeight;
+
+      const doc = view.state.doc;
+      const lastLine = doc.line(doc.lines);
+      if (lastLine.text.trim()) {
+        const docLen = doc.length;
+        view.dispatch({
+          changes: { from: docLen, insert: '\n' },
+          selection: { anchor: docLen + 1 },
+        });
+      } else {
+        view.dispatch({ selection: { anchor: doc.length } });
+      }
+    });
+  }
+
+  // RUN 버튼 동작 분기 — CLI/Shell 모드 분기
   const _origDoExec = _doExec;
   function _doExecRouted() {
+    if (_shellMode) { _doExecShell(); return; }
     if (_cliMode) { _doExecCli(); return; }
     _origDoExec();
   }
@@ -1083,9 +1134,18 @@
   window.RunView = {
     toggle: toggleFloat,
     get editModeActive() { return _runEditActive; },
+    enterEditMode: _enterRunEditMode,
     exitEditMode: _exitRunEditMode,
     execFileTmp: _doExecFileTmp,
     get cliMode() { return _cliMode; },
+    get shellMode() { return _shellMode; },
     toggleCli: _toggleCliMode,
+    toggleShell: _toggleShellMode,
+    // 고정 2단: 뷰(inline/overlay) 무관하게 항상 헤더 밑에 유지 → 가드 제거.
+    _refreshMiniRun() { _showMiniRun(); },
+    // 2단 펼침/접기 (☰·메뉴에서 통제)
+    setDock2Collapsed: _setDock2Collapsed,
+    toggleDock2: _toggleDock2Collapsed,
+    get dock2Collapsed() { return _dock2Collapsed; },
   };
 })();

@@ -1,0 +1,9 @@
+project:
+  name: y
+editor:
+  host: 127.0.0.1
+  port: 7979
+  auto_bash: true
+  task_manage: true
+created: '2026-06-07'
+updated: '2026-06-07'

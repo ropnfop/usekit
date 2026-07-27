@@ -88,7 +88,56 @@ class ExecLd:
         - pattern is parsed
         - inline format/location overrides are handled
         - alias / raw_name / loc / fmt are finalized
+        - @alias km resolution (via helper_km_system)
         """
+
+        # --- @alias km resolve (BEFORE normalize_value_params) ---
+        if isinstance(pattern, str) and pattern.startswith("@"):
+            from usekit.classes.common.utils.helper_km_system import resolve_km_alias
+
+            body = pattern[1:]
+
+            # --- Split :func before alias resolution ---
+            # @calc:add → alias="calc", func="add"
+            # @card.math_001 → no func
+            km_func = None
+            if ":" in body:
+                body, km_func = body.rsplit(":", 1)
+
+            parts = body.split(".", 1)
+            alias = parts[0]
+            rest = parts[1] if len(parts) > 1 else ""
+
+            effective_loc = loc or self.loc or "base"
+            effective_debug = self.debug_mode if debug is None else debug
+
+            km_result = resolve_km_alias(
+                alias, rest, self.fmt, effective_loc, debug=effective_debug,
+            )
+
+            # --- Group binding blocked for exec operations ---
+            if km_result.get("is_group"):
+                raise ValueError(
+                    f"Group alias '@{alias}' cannot be used for exec operations. "
+                    f"Use a single alias instead."
+                )
+
+            # KM resolved — override pattern/dir_path/name
+            pattern = None
+            dir_path = km_result.get("dir_path", dir_path)
+            name = km_result.get("name", name)
+
+            if effective_debug:
+                print("[EXEC-LOADER] _normalize_common() [KM]")
+                print(f"  input     = @{alias}.{rest}")
+                print(f"  name      = {name!r}")
+                print(f"  dir_path  = {dir_path!r}")
+                if km_func:
+                    print(f"  func (:)  = {km_func!r}")
+
+            # --- Inject :func into kwargs so it reaches exec/import ---
+            if km_func:
+                kwargs["func"] = km_func
 
         norm_kwargs: dict[str, Any] = {
             "fmt": self.fmt,

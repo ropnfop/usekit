@@ -357,7 +357,15 @@ def _delegate_to_post(sql_or_path: Any, p: dict, inline: bool = False) -> Any:
         # Extract from p dict (exclude reserved)
         else:
             named_params = {k: v for k, v in p.items() if k not in reserved}
-        
+
+        # Safety net: reserved keys (db/safe/debug/...) must NEVER end up in
+        # named_params, no matter which branch above produced it. The kwargs_exec
+        # / kwargs branches do not apply the reserved filter, so a reserved key
+        # such as 'db' can leak through and then collide with the explicit
+        # db=p.get('db') below -> "got multiple values for keyword argument 'db'".
+        # Stripping here makes all three branches consistent.
+        named_params = {k: v for k, v in named_params.items() if k not in reserved}
+
         if named_params:
             if debug:
                 print(f"[EXEC-SQL] Using named params: {named_params}")

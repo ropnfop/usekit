@@ -84,10 +84,29 @@ def proc_set_path(p: dict) -> Path:
     
     new_path = Path(p["dir_path"])
     if not new_path.is_absolute():
-        from usekit.classes.core.env.loader_base_path import BASE_PATH
-        new_path = (Path(BASE_PATH) / new_path).resolve()
+        # Resolve a relative dir_path against the SAME base that data actions use
+        # (data/{fmt}/{loc}), NOT the usekit root. Otherwise navi set points to
+        # <root>/<rel> while r/w/u/d look in data/<fmt>/<loc>/<rel> — they diverge
+        # and the override silently breaks. Keeping one base is the whole point of
+        # usekit's path system (no raw os/pathlib, no broken paths).
+        active_base = get_path_cache(p["fmt"], p["loc"])
+        if not active_base:
+            active_base = get_smart_path(
+                fmt=p["fmt"],
+                mod=p["mod"],
+                filename=None,
+                loc=p["loc"],
+                user_dir=None,
+                cus=p.get("cus", False),
+                ensure_ext=False,
+            )
+        new_path = (Path(active_base) / new_path).resolve()
     
     if p.get("cp") == "auto":
+        # old_path = the CURRENTLY ACTIVE source path, NOT the new target.
+        # Prefer the runtime cache (if a path was set earlier); otherwise resolve
+        # the original system path WITHOUT user_dir (passing the new dir_path here
+        # was the bug — it made old_path == new_path, so nothing got copied).
         old_path = get_path_cache(p["fmt"], p["loc"])
         if not old_path:
             old_path = get_smart_path(
@@ -95,7 +114,7 @@ def proc_set_path(p: dict) -> Path:
                 mod=p["mod"],
                 filename=None,
                 loc=p["loc"],
-                user_dir=p.get("dir_path"),
+                user_dir=None,
                 cus=p.get("cus", False),
                 ensure_ext=False
             )

@@ -255,5 +255,90 @@ def filter_const(prefix: str = "", suffix: str = "", return_type: str = "dict", 
         raise ValueError("return_type must be one of 'dict', 'keys', 'values', 'paths'")
 
 # -----------------------------------------------------------------------------------------------
+# Load/Save sys_project.yaml (project configuration)
+# -----------------------------------------------------------------------------------------------
+
+_sys_project_cache = None
+
+def _get_sys_project_path() -> Path:
+    """
+    Return path to sys_project.yaml in the ACTIVE project.
+    
+    Priority:
+        1. ENV_BASE_PATH / usekit/sys/sys_yaml/sys_project.yaml
+        2. Package-relative (fallback for dev mode)
+    
+    sys_project.yaml always lives in the active project,
+    NOT in the installed package.
+    """
+    # Priority 1: active project via ENV_BASE_PATH
+    base = os.getenv("ENV_BASE_PATH")
+    if base:
+        p = Path(base) / ".usekit" / "sys" / "sys_yaml" / "sys_project.yaml"
+        if p.exists():
+            return p
+
+    # Priority 2: BASE_PATH (loader_env resolved)
+    try:
+        bp = get_base_path()
+        p = bp / ".usekit" / "sys" / "sys_yaml" / "sys_project.yaml"
+        if p.exists():
+            return p
+    except Exception:
+        pass
+
+    # Fallback: same folder as sys_const.yaml
+    return _get_sys_const_path().parent / "sys_project.yaml"
+
+def get_sys_project() -> dict:
+    """Load and cache sys_project.yaml. Returns empty dict if not found."""
+    global _sys_project_cache
+    if _sys_project_cache is not None:
+        return _sys_project_cache
+    
+    path = _get_sys_project_path()
+    if not path.exists():
+        return {}
+    
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            _sys_project_cache = yaml.safe_load(f) or {}
+    except Exception as e:
+        logger.warning(f"[SYS_PROJECT] Failed to load: {e}")
+        return {}
+    return _sys_project_cache
+
+def save_sys_project(data: dict) -> bool:
+    """Save data to sys_project.yaml. Returns True on success."""
+    global _sys_project_cache
+    path = _get_sys_project_path()
+    
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        _sys_project_cache = data
+        return True
+    except Exception as e:
+        logger.error(f"[SYS_PROJECT] Failed to save: {e}")
+        return False
+
+def clear_sys_project_cache():
+    """Clear cached sys_project.yaml data."""
+    global _sys_project_cache
+    _sys_project_cache = None
+
+def get_project_value(key: str, default=None):
+    """Access sys_project.yaml values with dot notation. e.g. 'project.name'"""
+    data = get_sys_project()
+    keys = key.split(".")
+    for k in keys:
+        if isinstance(data, dict) and k in data:
+            data = data[k]
+        else:
+            return default
+    return data
+
+# -----------------------------------------------------------------------------------------------
 # [EOF] helper_const.py — USEKIT memory utility (optimized)
 # -----------------------------------------------------------------------------------------------

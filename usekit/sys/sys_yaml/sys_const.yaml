@@ -12,6 +12,8 @@ SYS_PATH:
   root: "usekit/sys"
   json: "sys_json"
   yaml: "sys_yaml"
+  db: "sys_db"            # usekit's own work DB (usekit.db) — task manager etc.
+  ddl: "sys_ddl"          # DDL seeds for usekit.db
 
 # ────────────────────────────────────────────────
 # [USE ZONE: Basic - fixed] use.read.json() / use.read.json.sub()
@@ -21,7 +23,7 @@ SYS_PATH:
 DB_PATH:
   root: "data/table/db"
   db: "base.db"
-  db_sub: "sub.db"
+  db_sub: "test.db"
 
 # DDL: Data Definition Language
 DDL_PATH:

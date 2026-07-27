@@ -333,6 +333,7 @@ def find_operation(**kwargs) -> Union[List[Path], List[Dict[str, Any]]]:
         loc=p["loc"],
         user_dir=p.get("dir_path"),
         walk=p["walk"],
+        extensions=p.get("ext"),
         case_sensitive=p.get("case_sensitive", False),
         debug=p.get("debug", False)
     )
@@ -461,6 +462,12 @@ def find_operation(**kwargs) -> Union[List[Path], List[Dict[str, Any]]]:
                     print(f"[{p['fmt'].upper()}] Error reading {f}: {e}")
         
         return results
+    
+    # Return name only (stem without extension)
+    if p.get("name_only"):
+        if p.get("debug") and files:
+            print(f"[{p['fmt'].upper()}] Final result (name_only): {len(files)} files")
+        return [f.stem for f in files]
     
     # Return just file paths
     if p.get("debug") and files:

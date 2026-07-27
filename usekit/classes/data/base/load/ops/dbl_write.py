@@ -159,18 +159,42 @@ def write_operation(**kwargs) -> Optional[Path]:
         PosixPath('/path/to/log.txt')
     """
     
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # Mem shortcut — no file I/O
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if kwargs.get("loc") == "mem":
+        from usekit.classes.data.base.load.ops.dbl_mem_store import mem_write
+        mem_write(kwargs.get("name"), kwargs.get("data"))
+        return None
+
     # Extract parameters
     p = params_for_write(**kwargs)
-    
+
     # Warn about future features (k, kv, kc, kf)
     warn_future_features(p)
-    
+
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # [0] Handle fmt=any for write operations
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ext override: resolve parser from extension
+    # e.g. ext=".km" → km format → txt parser
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    fmt_parser = p["fmt"]
+    if p.get("ext"):
+        _ext = p["ext"] if p["ext"].startswith(".") else f".{p['ext']}"
+        try:
+            from usekit.classes.common.utils.helper_format import get_format_parser
+            from usekit.classes.common.utils.helper_search import detect_format_from_file
+            _fmt = detect_format_from_file(f"dummy{_ext}")
+            if _fmt:
+                fmt_parser = get_format_parser(_fmt)
+                if p.get("debug"):
+                    print(f"[EXT] ext={_ext} → fmt={_fmt} → parser={fmt_parser}")
+        except Exception:
+            pass
+
     # fmt=any requires mod parameter to determine file extension
     # Validates mod using helper_format functions
-    fmt_parser = p["fmt"]
     if p["fmt"] == "any" and p["name"]:  # File write mode only
         if not p["mod"]:
             from usekit.classes.common.utils.helper_format import get_supported_formats
@@ -231,7 +255,8 @@ def write_operation(**kwargs) -> Optional[Path]:
         filename=p["name"],  # Can be None for DDL
         loc=p["loc"],
         user_dir=p.get("dir_path"),
-        cus=p["cus"]
+        cus=p["cus"],
+        ext=p.get("ext")
     )
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

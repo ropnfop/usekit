@@ -29,8 +29,12 @@ from usekit.classes.data.base.init.wrap.md.dbi_wrap_md import (
     has_md_base, has_md_sub, has_md_dir, has_md_now,
     has_md_tmp, has_md_pre, has_md_cache,
 )
-# EMIT
-from usekit.classes.data.base.init.wrap.md.dbi_wrap_md import emit_md_mem
+# EMIT + MEM
+from usekit.classes.data.base.init.wrap.md.dbi_wrap_md import (
+    emit_md_mem,
+    read_md_mem, write_md_mem, update_md_mem,
+    delete_md_mem, has_md_mem, list_md_mem,
+)
 
 # ===============================================================================
 # MdSimple class - Ultra-short interface with alias support
@@ -255,7 +259,38 @@ class MdSimple:
         """has md cache : supports positional, keyword, and alias (nm, dp, kd)"""
         return _wrap_read_format(has_md_cache)(name, dir_path, keydata, cus, **kwargs)
 
-# Singleton-style export
+    # ─────────────────────────────────────
+    # MEM (rmm/wmm/umm/dmm/hmm/lmm) - in-memory store
+    # ─────────────────────────────────────
+    @staticmethod
+    def rmm(name=None, **kwargs):
+        """read md mem : read from in-memory store"""
+        return read_md_mem(name=name, **kwargs)
+
+    @staticmethod
+    def wmm(data=None, name=None, **kwargs):
+        """write md mem : write to in-memory store"""
+        return write_md_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def umm(data=None, name=None, **kwargs):
+        """update md mem : merge dict into existing in-memory store entry"""
+        return update_md_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def dmm(name=None, **kwargs):
+        """delete md mem : delete from in-memory store"""
+        return delete_md_mem(name=name, **kwargs)
+
+    @staticmethod
+    def hmm(name=None, **kwargs):
+        """has md mem : check existence in in-memory store"""
+        return has_md_mem(name=name, **kwargs)
+
+    @staticmethod
+    def lmm(**kwargs):
+        """list md mem : list all keys in in-memory store"""
+        return list_md_mem()
 
     # ─────────────────────────────────────
     # EMIT (emm) - memory-only serialization

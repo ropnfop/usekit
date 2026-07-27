@@ -1035,7 +1035,7 @@ body.qn-multi-on-active #floatBlkTool {
   gap: var(--sp-sm);
 }
 
-.settings-section:last-child { border-bottom: none; }
+.settings-section:last-child { border-bottom: none; padding-bottom: var(--sp-xl, 24px); }
 
 /* Global toggle 섹션 */
 .settings-section-global {
@@ -2773,3 +2773,388 @@ body.qn-multi-on-active #floatBlkTool {
 /* 컬럼 블럭 선택 highlight */
 .cm-col-block { background: rgba(100, 160, 255, 0.35); }
 .cm-col-cursor-line { background: rgba(100, 160, 255, 0.18); }
+
+/* Storage clear (danger zone) */
+.settings-section-danger { background: var(--bg-surface); }
+
+.settings-danger-btn {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: var(--r-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #c0392b;
+  color: #fff;
+  border: 1px solid #a93226;
+  cursor: pointer;
+  transition: background 150ms;
+}
+.settings-danger-btn:active { background: #e74c3c; }
+
+.settings-danger-desc {
+  font-size: 0.7rem;
+  opacity: 0.5;
+  text-align: center;
+}
+
+
+/* ── 9. NOTICE MODAL ───────────────────────────────────── */
+
+.notice-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.58);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+  padding: 18px;
+  opacity: 0; transition: opacity 0.26s ease;
+}
+.notice-overlay.open { opacity: 1; }
+.notice-overlay.hiding { opacity: 0; }
+
+.notice-modal {
+  background: var(--bg-surface, #1a1a1e);
+  border: 1px solid var(--bd, rgba(255,255,255,0.09));
+  border-radius: 14px;
+  width: 100%; max-width: 430px; max-height: 86vh;
+  overflow-y: auto; overscroll-behavior: contain;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.52);
+  transform: translateY(16px) scale(0.97);
+  transition: transform 0.32s cubic-bezier(0.16,1,0.3,1), opacity 0.32s ease;
+  opacity: 0;
+}
+.notice-overlay.open .notice-modal { transform: translateY(0) scale(1); opacity: 1; }
+
+.notice-header {
+  padding: 24px 24px 14px; display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--bd, rgba(255,255,255,0.08));
+}
+.notice-icon {
+  width: 36px; height: 36px; border-radius: 9px;
+  background: rgba(100,160,255,0.12); color: var(--ac, #6ea8fe);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.notice-icon svg { width: 18px; height: 18px; }
+.notice-title { font-size: 0.95rem; font-weight: 600; color: var(--tx-primary, #e8e6e3); }
+.notice-title span { color: var(--ac, #6ea8fe); }
+
+.notice-lang-tabs {
+  display: flex; gap: 4px; padding: 12px 24px 0;
+}
+.notice-lang-tab {
+  padding: 5px 14px; border-radius: 6px; font-size: 0.75rem; font-weight: 500;
+  background: var(--bg-raised, rgba(255,255,255,0.06));
+  color: var(--tx-muted, #a0a0a0); border: 1px solid transparent; cursor: pointer;
+}
+.notice-lang-tab.active {
+  background: var(--ac-dim, rgba(100,160,255,0.12));
+  color: var(--ac, #6ea8fe); border-color: rgba(100,160,255,0.2);
+}
+
+.notice-body { padding: 16px 24px; }
+.notice-text { display: none; }
+.notice-text.active { display: block; }
+.notice-text p { font-size: 0.82rem; line-height: 1.6; margin-bottom: 10px; color: var(--tx-secondary, #a0a0a0); }
+.notice-text p:last-child { margin-bottom: 0; }
+.notice-text b { color: var(--ac, #6ea8fe); font-weight: 600; }
+.notice-text code {
+  font-family: var(--font-mono, monospace); font-size: 0.78rem;
+  background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px;
+}
+.notice-warn { color: #d4a853; font-weight: 500; }
+
+.notice-check-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 24px; cursor: pointer;
+}
+.notice-check-row input { display: none; }
+.notice-check-box {
+  width: 16px; height: 16px; border-radius: 4px;
+  border: 1.5px solid var(--tx-muted, #666); background: transparent;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: all 0.15s;
+}
+.notice-check-box svg { width: 10px; height: 10px; color: var(--bg-surface, #1a1a1e); opacity: 0; transform: scale(0.5); transition: all 0.15s; }
+.notice-check-row input:checked + .notice-check-box { background: var(--ac, #6ea8fe); border-color: var(--ac, #6ea8fe); }
+.notice-check-row input:checked + .notice-check-box svg { opacity: 1; transform: scale(1); }
+.notice-check-label { font-size: 0.72rem; color: var(--tx-muted, #666); user-select: none; }
+
+.notice-actions { padding: 16px 24px 22px; display: flex; flex-direction: column; gap: 8px; }
+.notice-btn {
+  width: 100%; min-height: 42px; border: none; border-radius: 8px;
+  font-size: 0.82rem; font-weight: 500; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.notice-btn:active { transform: scale(0.985); }
+.notice-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.notice-btn-confirm { background: var(--ac, #6ea8fe); color: #1a1a1e; }
+.notice-btn-close {
+  background: var(--bg-raised, rgba(255,255,255,0.06));
+  color: var(--tx-muted, #a0a0a0); border: 1px solid var(--bd, rgba(255,255,255,0.12));
+}
+
+/* ── AI 모델 좌측 시트 (Settings 패턴 재사용) ── */
+#floatAiModelPanel.model-sheet {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 100001 !important;
+  display: block !important;       /* 떠있는-박스의 display:none/flex 무력화 */
+  pointer-events: none !important;
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+  max-height: none !important;     /* float-pills.css 의 max-height:60vh 무력화 (딤이 전체 안 덮이던 버그) */
+  overflow: visible !important;    /* float-pills.css 의 overflow:hidden 무력화 */
+  /* 닫힘 기본: 보이지만 클릭 통과 + 드로어는 화면 밖 */
+  visibility: hidden;
+}
+#floatAiModelPanel.model-sheet.open {
+  pointer-events: auto !important;
+  visibility: visible;
+}
+.model-sheet-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.50);
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+#floatAiModelPanel.model-sheet.open .model-sheet-overlay { opacity: 1; }
+.model-sheet-drawer {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: min(82vw, 320px);
+  background: var(--bg-surface, rgba(22,18,36,0.98));
+  border-right: 1px solid var(--bd, rgba(167,139,250,0.22));
+  box-shadow: var(--sh-lg, 0 8px 28px rgba(0,0,0,0.45));
+  transform: translateX(-100%);
+  transition: transform 240ms cubic-bezier(0.4,0,0.2,1);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#floatAiModelPanel.model-sheet.open .model-sheet-drawer { transform: translateX(0); }
+.model-sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.7rem 1rem 0.5rem;
+  position: sticky; top: 0;
+  background: inherit;
+}
+.model-sheet-title { font-weight: 700; font-size: 0.95rem; color: var(--fg, #e2e4e9); }
+.model-sheet-close {
+  background: none; border: 0; color: var(--fg-muted, #94A3B8);
+  font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.5rem;
+}
+.model-sheet .ai-model-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-bottom: 1rem;
+}
+
+/* ── ai-sheet: model-sheet 의 범용 별칭 (Opt/Attach 도 같은 골격 쓰도록 — 다음 STEP) ── */
+.ai-sheet {
+  position: fixed !important; inset: 0 !important; z-index: 100001 !important;
+  display: block !important; pointer-events: none !important;
+  background: none !important; border: 0 !important; border-radius: 0 !important;
+  box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  padding: 0 !important; min-width: 0 !important;
+  max-height: none !important; overflow: visible !important;
+  visibility: hidden;
+}
+.ai-sheet.open { pointer-events: auto !important; visibility: visible; }
+.ai-sheet-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.50); opacity: 0; transition: opacity 220ms ease; }
+.ai-sheet.open .ai-sheet-overlay { opacity: 1; }
+.ai-sheet-drawer {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  width: min(82vw, 320px);
+  background: var(--bg-surface, rgba(22,18,36,0.98));
+  border-right: 1px solid var(--bd, rgba(167,139,250,0.22));
+  box-shadow: var(--sh-lg, 0 8px 28px rgba(0,0,0,0.45));
+  transform: translateX(-100%);
+  transition: transform 240ms cubic-bezier(0.4,0,0.2,1);
+  display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
+}
+.ai-sheet.open .ai-sheet-drawer { transform: translateX(0); }
+.ai-sheet-header { display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 1rem 0.5rem; position: sticky; top: 0; background: inherit; }
+.ai-sheet-title { font-weight: 700; font-size: 0.95rem; color: var(--fg, #e2e4e9); }
+.ai-sheet-close { background: none; border: 0; color: var(--fg-muted, #94A3B8); font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.5rem; }
+.ai-sheet .ai-model-list { flex: 1 1 auto; overflow-y: auto; padding-bottom: 1rem; }
+
+/* ── AI 시트 하단: 선택 모델 강조 배지 ── */
+.ai-active-badge {
+  display: flex; align-items: center; gap: 0.6rem;
+  margin: 0.5rem 0.8rem 0.7rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-left: 4px solid var(--ai-active-accent, #79c0ff);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), 0 4px 14px -6px var(--ai-active-accent, #79c0ff);
+  transition: border-left-color 200ms ease, box-shadow 200ms ease;
+}
+.ai-active-dot {
+  flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--ai-active-accent, #79c0ff);
+  box-shadow: 0 0 8px var(--ai-active-accent, #79c0ff);
+}
+.ai-active-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.ai-active-model {
+  font-weight: 800; font-size: 1.02rem; letter-spacing: 0.02em;
+  color: var(--fg, #e8eaed);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ai-active-sub {
+  font-size: 0.72rem; font-weight: 500; opacity: 0.9;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--fg-muted, #adbac7);
+}
+
+/* Memory Editor (A0): top-anchored, same sizing as #loadModal */
+#memEditModal.modal-overlay {
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 60px;
+  padding-bottom: 0;
+}
+#memEditModal .modal {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Memory Editor (A1): zone label (MAIN / TEMP separators in the list) */
+#memEditModal .memedit-zone-label {
+  padding: var(--sp-sm) var(--sp-md);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--tx-muted);
+  text-transform: uppercase;
+}
+
+/* Memory Editor (A2): slot back-link on session card */
+#memEditModal .memedit-slot-link {
+  margin-top: var(--sp-xs);
+  font-size: 0.72rem;
+  color: var(--ac-active-tx, #6ea8fe);
+  opacity: 0.85;
+}
+
+/* Memory Editor (A2): back row (turns view -> session list) */
+#memEditModal .memedit-back {
+  padding: var(--sp-sm) var(--sp-md);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ac-active-tx, #6ea8fe);
+  cursor: pointer;
+}
+#memEditModal .memedit-back:active { opacity: 0.6; }
+
+/* Memory Editor (A2): turn card (clip-style expand) */
+#memEditModal .memedit-turn {
+  border: 1px solid var(--bd);
+  border-radius: var(--r-sm);
+  margin: var(--sp-xs) 0;
+  overflow: hidden;
+}
+#memEditModal .memedit-turn.dim { opacity: 0.5; }
+#memEditModal .memedit-turn-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-sm) var(--sp-md);
+  cursor: pointer;
+}
+#memEditModal .memedit-turn-seq {
+  font-size: 0.7rem;
+  color: var(--tx-muted);
+  flex-shrink: 0;
+}
+#memEditModal .memedit-turn-role {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+#memEditModal .memedit-turn-role.role-you  { color: #c4b5fd; }
+#memEditModal .memedit-turn-role.role-ai   { color: var(--ac-green-tx, #4ade80); }
+#memEditModal .memedit-turn-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--tx-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#memEditModal .memedit-turn-toggle {
+  font-size: 0.7rem;
+  color: var(--tx-muted);
+  flex-shrink: 0;
+}
+#memEditModal .memedit-turn-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 var(--sp-md) var(--sp-sm);
+}
+#memEditModal .memedit-badge {
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,0.07);
+  color: var(--tx-muted);
+}
+#memEditModal .memedit-badge.bg-temp { background: rgba(250,204,21,0.18);  color: #facc15; }
+#memEditModal .memedit-badge.bg-excl { background: rgba(148,163,184,0.20); color: #94a3b8; }
+#memEditModal .memedit-badge.bg-fail { background: rgba(248,113,113,0.18); color: #f87171; }
+#memEditModal .memedit-turn-detail {
+  border-top: 1px solid var(--bd);
+  padding: var(--sp-sm) var(--sp-md);
+}
+#memEditModal .memedit-turn-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--tx-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+#memEditModal .memedit-turn-summary {
+  margin-top: var(--sp-sm);
+  font-size: 0.72rem;
+  color: var(--tx-muted);
+  font-style: italic;
+}
+
+/* Memory Editor (A3.5): turn head (back + filter) — sibling of list, not scrolled */
+#memEditModal #memEditTurnHead {
+  flex-shrink: 0;
+}
+/* Memory Editor (A3.5): turn filter bar */
+#memEditModal .memedit-tfilter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: var(--sp-sm) 0;
+}
+#memEditModal .memedit-tfilter .modal-search { margin: 0; flex: 1; min-width: 140px; }
+
+/* turn-view fix (verified on device 2026-06-08): .modal-list is a flex column,
+   so the 28 turn cards (flex items) were shrunk to ~2px each instead of the
+   list scrolling — header showed "28/28" but body looked empty. Pin the cards
+   so they keep natural height; the list scrolls via its own overflow-y. */
+#memEditModal .memedit-turn { flex-shrink: 0; }

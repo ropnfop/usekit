@@ -419,6 +419,35 @@ const Editor = (function () {
         _view = new EditorView({
             state,
             parent: hostEl,
+            // Samsung virtual keyboard + autocomplete can make Chrome's
+            // EditContext emit a stale change range (e.g. "7 to 7" against an
+            // empty doc), throwing RangeError deep in CM6 and leaving the
+            // editor unrecoverable. Wrap the dispatcher: apply transactions
+            // normally, but if one throws a range error, drop it and let the
+            // next input re-sync instead of crashing the view.
+            dispatchTransactions(trs, view) {
+                try {
+                    view.update(trs);
+                } catch (e) {
+                    const msg = String((e && e.message) || e);
+                    if (e instanceof RangeError || /range|out of range|No tile/i.test(msg)) {
+                        // Stale EditContext update — ignore. Re-sync EditContext
+                        // to the current (unchanged) doc so the next keystroke
+                        // starts from a correct base.
+                        try {
+                            const ec = view.contentDOM && view.contentDOM.editContext;
+                            if (ec && view.state) {
+                                const len = view.state.doc.length;
+                                ec.updateText(0, ec.text.length, view.state.sliceDoc());
+                                const sel = view.state.selection.main;
+                                ec.updateSelection(Math.min(sel.anchor, len), Math.min(sel.head, len));
+                            }
+                        } catch (e2) { /* best-effort resync */ }
+                        return;
+                    }
+                    throw e;  // unrelated errors must still surface
+                }
+            },
         });
 
         // Prevent scroll propagation (Samsung Internet VP pan fix)

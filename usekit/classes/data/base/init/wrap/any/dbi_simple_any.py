@@ -29,8 +29,12 @@ from usekit.classes.data.base.init.wrap.any.dbi_wrap_any import (
     has_any_base, has_any_sub, has_any_dir, has_any_now,
     has_any_tmp, has_any_pre, has_any_cache,
 )
-# EMIT
-from usekit.classes.data.base.init.wrap.any.dbi_wrap_any import emit_any_mem
+# EMIT + MEM
+from usekit.classes.data.base.init.wrap.any.dbi_wrap_any import (
+    emit_any_mem,
+    read_any_mem, write_any_mem, update_any_mem,
+    delete_any_mem, has_any_mem, list_any_mem,
+)
 
 # ===============================================================================
 # AnySimple class - Ultra-short interface with alias support
@@ -255,7 +259,38 @@ class AnySimple:
         """has any cache : supports positional, keyword, and alias (nm, dp, kd)"""
         return _wrap_read_any_fmt(has_any_cache)(name, mod, dir_path, keydata, cus, **kwargs)
 
-# Singleton-style export
+    # ─────────────────────────────────────
+    # MEM (ram/wam/uam/dam/ham/lam) - in-memory store
+    # ─────────────────────────────────────
+    @staticmethod
+    def ram(name=None, **kwargs):
+        """read any mem : read from in-memory store"""
+        return read_any_mem(name=name, **kwargs)
+
+    @staticmethod
+    def wam(data=None, name=None, **kwargs):
+        """write any mem : write to in-memory store"""
+        return write_any_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def uam(data=None, name=None, **kwargs):
+        """update any mem : merge dict into existing in-memory store entry"""
+        return update_any_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def dam(name=None, **kwargs):
+        """delete any mem : delete from in-memory store"""
+        return delete_any_mem(name=name, **kwargs)
+
+    @staticmethod
+    def ham(name=None, **kwargs):
+        """has any mem : check existence in in-memory store"""
+        return has_any_mem(name=name, **kwargs)
+
+    @staticmethod
+    def lam(**kwargs):
+        """list any mem : list all keys in in-memory store"""
+        return list_any_mem()
 
     # ─────────────────────────────────────
     # EMIT (eam) - memory-only serialization

@@ -216,6 +216,7 @@ def _search_file_path(filename: str, p: dict) -> Union[Path, List[Path], None]:
         loc=p["loc"],
         user_dir=p.get("dir_path"),
         walk=p.get("walk", True),  # Default to walk=True for file search
+        extensions=p.get("ext"),
         case_sensitive=False,
         debug=p.get("debug", False)
     )
@@ -433,6 +434,7 @@ def path_operation(**kwargs) -> Any:
         loc=p["loc"],
         user_dir=p.get("dir_path"),
         walk=p.get("walk", False),  # Pass walk parameter
+        extensions=p.get("ext"),
         case_sensitive=False,
         debug=p.get("debug", False)
     )

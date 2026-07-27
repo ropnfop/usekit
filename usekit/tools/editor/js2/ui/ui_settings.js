@@ -315,6 +315,27 @@ const UISettings = (function () {
         }
     }
 
+    function applyAutostart(on) {
+        const isOn = on === 'on' || on === true;
+        document.querySelectorAll('.settings-layout-btn[data-autostart]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.autostart === (isOn ? 'on' : 'off'));
+        });
+        fetch('/api/autostart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enable: isOn })
+        }).catch(() => {});
+    }
+
+    function _restoreAutostart() {
+        fetch('/api/autostart')
+            .then(r => r.json())
+            .then(d => {
+                applyAutostart(d.enabled ? 'on' : 'off');
+            })
+            .catch(() => applyAutostart('off'));
+    }
+
     function _restore() {
         try {
             // SetupPolicy global 값 우선, fallback → localStorage
@@ -337,6 +358,7 @@ const UISettings = (function () {
             // indicator 설정 없으면 layout이 자동 처리
             const debug = localStorage.getItem(STORAGE_KEY_DEBUG) || 'off';
             applyDebug(debug);
+            _restoreAutostart();
 
         } catch(e) {
             applyTheme('dark');
@@ -381,6 +403,11 @@ const UISettings = (function () {
             btn.addEventListener('click', () => applyDebug(btn.dataset.debug));
         });
 
+        // ── Autostart on/off ─────────────────────────────────────
+        document.querySelectorAll('.settings-layout-btn[data-autostart]').forEach(btn => {
+            btn.addEventListener('click', () => applyAutostart(btn.dataset.autostart));
+        });
+
         // ── Feedback (vib / sound) ───────────────────────────────
         UIFeedback?.initButtons?.();
 
@@ -405,6 +432,75 @@ const UISettings = (function () {
                 _persistSettings();
             });
         });
+
+        // ── Clear Storage ───────────────────────────────────────
+        document.getElementById('btnClearStorage')?.addEventListener('click', _clearStorage);
+    }
+
+    // Clear all storage: OPFS + IDB + localStorage + SW cache
+    function _clearStorage() {
+        const m     = document.getElementById('confirmModal');
+        const txt   = document.getElementById('confirmModalMessage');
+        const title = document.getElementById('confirmModalTitle');
+        const ok    = document.getElementById('btnConfirmModalOk');
+        const cancel = document.getElementById('btnConfirmModalCancel');
+        const close  = document.getElementById('btnConfirmModalClose');
+
+        if (!m || !ok) { _execClear(); return; }
+
+        // Set warning message
+        if (title) title.textContent = 'Clear Storage';
+        txt.innerHTML =
+            '<div style="line-height:1.7;font-size:0.82rem;">' +
+            '저장하지 않은 임시 데이터가 <b style="color:#e74c3c;">모두 삭제</b>됩니다.<br>' +
+            '제거 전 반드시 파일을 별도로 저장하세요.<br><br>' +
+            '<span style="opacity:0.6;font-size:0.75rem;">Unsaved temporary data will be <b>permanently deleted</b>.<br>' +
+            'Please save your files before proceeding.</span>' +
+            '</div>';
+        ok.textContent = 'Yes';
+        ok.classList.add('modal-btn-danger');
+        if (cancel) cancel.textContent = 'No';
+
+        m.style.display = '';
+        m.setAttribute('aria-hidden', 'false');
+
+        const hide = () => {
+            m.style.display = 'none';
+            m.setAttribute('aria-hidden', 'true');
+            if (title) title.textContent = 'Confirm';
+        };
+        const onY = () => { hide(); _execClear(); };
+        ok.addEventListener('click',     onY,  { once: true });
+        cancel?.addEventListener('click', hide, { once: true });
+        close?.addEventListener('click',  hide, { once: true });
+        m.addEventListener('click', e => { if (e.target === m) hide(); }, { once: true });
+    }
+
+    async function _execClear() {
+        try {
+            // 1) OPFS — remove usekit_editor dir
+            if (navigator.storage?.getDirectory) {
+                try {
+                    const root = await navigator.storage.getDirectory();
+                    await root.removeEntry('usekit_editor', { recursive: true });
+                } catch (e) {
+                    if (e.name !== 'NotFoundError') console.warn('[Clear] OPFS:', e);
+                }
+            }
+            // 2) IDB — delete database
+            try { indexedDB.deleteDatabase('usekit_editor'); } catch (e) {}
+            // 3) localStorage — all usekit* keys
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+            keys.forEach(k => { if (k && k.startsWith('usekit')) localStorage.removeItem(k); });
+            // 4) SW cache
+            if ('caches' in window) {
+                const ns = await caches.keys();
+                await Promise.all(ns.map(n => caches.delete(n)));
+            }
+        } catch (e) { console.warn('[UISettings] clear failed', e); }
+
+        location.reload();
     }
 
     // All 체크 ON/OFF → 전체 정책 일괄 변경

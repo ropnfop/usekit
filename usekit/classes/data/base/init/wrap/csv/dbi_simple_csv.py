@@ -29,8 +29,12 @@ from usekit.classes.data.base.init.wrap.csv.dbi_wrap_csv import (
     has_csv_base, has_csv_sub, has_csv_dir, has_csv_now,
     has_csv_tmp, has_csv_pre, has_csv_cache,
 )
-# EMIT
-from usekit.classes.data.base.init.wrap.csv.dbi_wrap_csv import emit_csv_mem
+# EMIT + MEM
+from usekit.classes.data.base.init.wrap.csv.dbi_wrap_csv import (
+    emit_csv_mem,
+    read_csv_mem, write_csv_mem, update_csv_mem,
+    delete_csv_mem, has_csv_mem, list_csv_mem,
+)
 
 # ===============================================================================
 # CsvSimple class - Ultra-short interface with alias support
@@ -255,7 +259,38 @@ class CsvSimple:
         """has csv cache : supports positional, keyword, and alias (nm, dp, kd)"""
         return _wrap_read_format(has_csv_cache)(name, dir_path, keydata, cus, **kwargs)
 
-# Singleton-style export
+    # ─────────────────────────────────────
+    # MEM (rcm/wcm/ucm/dcm/hcm/lcm) - in-memory store
+    # ─────────────────────────────────────
+    @staticmethod
+    def rcm(name=None, **kwargs):
+        """read csv mem : read from in-memory store"""
+        return read_csv_mem(name=name, **kwargs)
+
+    @staticmethod
+    def wcm(data=None, name=None, **kwargs):
+        """write csv mem : write to in-memory store"""
+        return write_csv_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def ucm(data=None, name=None, **kwargs):
+        """update csv mem : merge dict into existing in-memory store entry"""
+        return update_csv_mem(data=data, name=name, **kwargs)
+
+    @staticmethod
+    def dcm(name=None, **kwargs):
+        """delete csv mem : delete from in-memory store"""
+        return delete_csv_mem(name=name, **kwargs)
+
+    @staticmethod
+    def hcm(name=None, **kwargs):
+        """has csv mem : check existence in in-memory store"""
+        return has_csv_mem(name=name, **kwargs)
+
+    @staticmethod
+    def lcm(**kwargs):
+        """list csv mem : list all keys in in-memory store"""
+        return list_csv_mem()
 
     # ─────────────────────────────────────
     # EMIT (ecm) - memory-only serialization

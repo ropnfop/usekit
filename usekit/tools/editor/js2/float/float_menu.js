@@ -497,7 +497,7 @@
 
   // ────────────────────────────────
   // 풋터 btnMenuTool → MENU pill 토글 (기존 run tool / sql view 패턴과 동일)
-  // 풋터 btnCopyTool → Copy pill 토글 (기존 CTRL+TAB과 병행하는 즉발 경로)
+  // 풋터 btnCopyTool → Edit pill 토글
   // ────────────────────────────────
   function _bindFooterToggle(btnId, toggleFn) {
     const btn = document.getElementById(btnId);

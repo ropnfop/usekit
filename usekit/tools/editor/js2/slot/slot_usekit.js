@@ -21,6 +21,15 @@ const SlotUsekit = (function () {
         return s.startsWith('/_tmp/');
     }
 
+    /**
+     * 외부 절대경로인지 판별 (/storage/... , /data/... 등)
+     * sandbox 경로(/_tmp/...)가 아닌 '/' 시작 절대경로
+     */
+    function isExternalAbs(p) {
+        const s = String(p || '').trim();
+        return s.startsWith('/storage') || s.startsWith('/data');
+    }
+
     function getTargetPath(slot) {
         const p = String(slot?.usekitPath || '').trim();
         if (p) return p;
@@ -57,9 +66,11 @@ const SlotUsekit = (function () {
         const expectedName = slot.fileName;
 
 
-        const url = isAbsPath(targetPath)
-            ? `/api/read?path=${encodeURIComponent(targetPath)}`
-            : `/api/load?path=${encodeURIComponent(targetPath)}`;
+        const url = isExternalAbs(targetPath)
+            ? `/api/read_abs?path=${encodeURIComponent(targetPath)}`
+            : isAbsPath(targetPath)
+                ? `/api/read?path=${encodeURIComponent(targetPath)}`
+                : `/api/load?path=${encodeURIComponent(targetPath)}`;
 
         return fetch(url)
             .then(r => r.json().catch(() => ({})).then(j => ({ r, j })))
@@ -215,6 +226,7 @@ const SlotUsekit = (function () {
     return {
         isUsekitSlot,
         isAbsPath,
+        isExternalAbs,
         getTargetPath,
         syncFromServer,
         openUsekitFile,

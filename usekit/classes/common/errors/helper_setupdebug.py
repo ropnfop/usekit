@@ -31,7 +31,7 @@ def print_loader_debug(env_path=None):
         return
 
     base_path = str(BASE_PATH)
-    usekit_path = str(BASE_PATH / "usekit")
+    usekit_path = str(BASE_PATH / ".usekit")
     env_path = str(Path(usekit_path) / ".env")
 
     # --- YAML config structure (new style): use root + subkey, always relative ---

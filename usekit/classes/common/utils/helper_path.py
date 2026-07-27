@@ -126,7 +126,8 @@ def get_smart_path(
     loc: str = "base",
     user_dir: str = None,
     cus: str = None,
-    ensure_ext: bool = True
+    ensure_ext: bool = True,
+    ext: str = None
 ) -> Path:
     """
     Automatically assemble path based on format and location options.
@@ -220,8 +221,8 @@ def get_smart_path(
             
             file_path = Path(filename)
             if ensure_ext and not file_path.suffix:
-                ext = fmt_actual  # Already computed above with cache/format logic
-                file_path = file_path.with_suffix(ext)
+                actual_ext = (ext if ext.startswith(".") else f".{ext}") if ext else fmt_actual
+                file_path = file_path.with_suffix(actual_ext)
             
             final_path = base_path / file_path
             return final_path.resolve()
@@ -335,11 +336,11 @@ def get_smart_path(
     if not filename:
         return base_path.resolve()
     
-    # 확장자 자동 추가 (fmt_actual은 상단에서 이미 계산됨)
+    # ext override or default format extension
     file_path = Path(filename)
     if ensure_ext and not file_path.suffix:
-        ext = fmt_actual  # Already computed at the top with any/cache logic
-        file_path = file_path.with_suffix(ext)
+        actual_ext = (ext if ext.startswith(".") else f".{ext}") if ext else fmt_actual
+        file_path = file_path.with_suffix(actual_ext)
     
     final_path = base_path / file_path
     return final_path.resolve()

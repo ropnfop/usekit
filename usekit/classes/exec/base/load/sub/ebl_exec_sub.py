@@ -84,7 +84,7 @@ def route_to_executor(
     
     # Route to format-specific POST layer
     if fmt == "pyp":
-        from usekit.classes.exec.base.post.act.ebp_exec_pyp import exec_pyp
+        from usekit.classes.exec.base.post.act.pyp.ebp_exec_pyp import exec_pyp
         return exec_pyp(
             path=path,
             func=func,
@@ -97,7 +97,7 @@ def route_to_executor(
         )
     
     elif fmt == "sql":
-        from usekit.classes.exec.base.post.act.ebp_exec_sql import exec_sql
+        from usekit.classes.exec.base.post.act.sql.ebp_exec_sql import exec_sql
         return exec_sql(
             path=path,
             func=func,  # For SQL, this might be query name
@@ -108,7 +108,7 @@ def route_to_executor(
         )
     
     elif fmt == "ddl":
-        from usekit.classes.exec.base.post.act.ebp_exec_ddl import exec_ddl
+        from usekit.classes.exec.base.post.act.ddl.ebp_exec_ddl import exec_ddl
         return exec_ddl(
             path=path,
             func=func,

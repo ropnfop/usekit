@@ -212,25 +212,36 @@ def _split_target_into_dir_and_name(target: str) -> Tuple[Optional[str], Optiona
     """
     Normalize target path into (dir_fragment, leaf_name).
 
-    Transformations
-    ---------------
-    - Replace all '.' with '/'
-    - Split by '/'
-    - Last segment becomes leaf name
-    - Preceding segments become dir_fragment
+    Two disambiguation modes for the '.' character:
 
-    Examples
-    --------
-    "aa.bb.cc"      → ("aa/bb", "cc")
-    "aa/bb.cc"      → ("aa/bb", "cc")
-    "task"          → (None, "task")
-    "" or None      → (None, None)
+    1) PATH mode  (a '/' is present in target)
+       The path structure is given explicitly by '/', so any '.' inside
+       the leaf is an EXTENSION, not a separator. The leaf is kept intact
+       (e.g. "test.db") and exact-matched downstream by find_data_search.
+         "./test.db"     → (None,   "test.db")   # "." head = current dir
+         "data/test.db"  → ("data", "test.db")
+         "a/b/file.km"   → ("a/b",  "file.km")
+
+    2) DOT mode  (no '/' in target)
+       Backward-compatible dot-DSL: every '.' is a path separator.
+         "aa.bb.cc"      → ("aa/bb", "cc")
+         "mytest.test"   → ("mytest", "test")
+         "task"          → (None,    "task")
+         "" or None      → (None,    None)
     """
     if not target:
         return None, None
 
-    normalized = target.replace(".", "/")
-    parts = [p for p in normalized.split("/") if p]
+    # --- PATH mode: '/' wins, leaf (with extension) stays intact ---
+    if "/" in target:
+        head, _, leaf = target.rpartition("/")
+        dir_fragment = head.strip("/")
+        if dir_fragment in ("", "."):  # current dir → no explicit fragment
+            dir_fragment = None
+        return dir_fragment, (leaf or None)
+
+    # --- DOT mode: dots act as path separators (unchanged) ---
+    parts = [p for p in target.split(".") if p]
 
     if not parts:
         return None, None

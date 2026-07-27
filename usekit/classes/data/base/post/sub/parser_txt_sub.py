@@ -189,49 +189,40 @@ def _search_keydata(
     
     if not keydata:
         return lines if not keydata_exists else True
-    
-    # Regex mode
+
+    # Build a single per-line matcher (compiled once for regex).
+    # Per-line direct judgement keeps this O(n) and makes invert_match
+    # a simple polarity flip — no O(n^2) "ln not in matches" scan.
     if regex:
         flags = 0 if case_sensitive else re.IGNORECASE
         try:
             pattern = re.compile(keydata, flags)
-            
-            if keydata_exists:
-                # Early return for existence check
-                for ln in lines:
-                    if pattern.search(ln):
-                        return not invert_match
-                return invert_match
-            else:
-                matches = [ln for ln in lines if pattern.search(ln)]
         except re.error as e:
             raise ValueError(f"Invalid regex pattern '{keydata}': {e}")
+
+        def _is_match(ln: str) -> bool:
+            return pattern.search(ln) is not None
     else:
-        # Simple substring search
-        if keydata_exists:
-            # Early return for existence check
-            if case_sensitive:
-                for ln in lines:
-                    if keydata in ln:
-                        return not invert_match
-            else:
-                kd_lower = keydata.lower()
-                for ln in lines:
-                    if kd_lower in ln.lower():
-                        return not invert_match
-            return invert_match
+        if case_sensitive:
+            def _is_match(ln: str) -> bool:
+                return keydata in ln
         else:
-            if case_sensitive:
-                matches = [ln for ln in lines if keydata in ln]
-            else:
-                kd_lower = keydata.lower()
-                matches = [ln for ln in lines if kd_lower in ln.lower()]
-    
-    # Invert match (only when not keydata_exists mode)
-    if invert_match:
-        matches = [ln for ln in lines if ln not in matches]
-    
-    return matches
+            kd_lower = keydata.lower()
+
+            def _is_match(ln: str) -> bool:
+                return kd_lower in ln.lower()
+
+    # Existence check: early return, respects invert
+    if keydata_exists:
+        for ln in lines:
+            if _is_match(ln):
+                return not invert_match
+        return invert_match
+
+    # Keep a line when its match-state equals the requested polarity.
+    #   invert_match=False -> keep matching lines
+    #   invert_match=True  -> keep non-matching lines (grep -v)
+    return [ln for ln in lines if _is_match(ln) != invert_match]
 
 
 # ===============================================================================

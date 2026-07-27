@@ -1,4 +1,4 @@
-// float_clip.js — Clip pill logic (extracted from index.html)
+// float_clip.js — Edit pill logic (Clipboard + Edit tools)
 (function() {
   const pill = document.getElementById('floatClipTool');
   const panel = document.getElementById('floatClipToolPanel');
@@ -259,12 +259,52 @@
     });
   }
   _bindCtpGroupToggle('floatCtpClipToggle', 'floatCtpClipSection', 'floatCtpClipArrow');
+  _bindCtpGroupToggle('floatCtpEditToggle', 'floatCtpEditSection', 'floatCtpEditArrow');
   _bindCtpGroupToggle('floatCtpMenuToggle', 'floatCtpMenuSection', 'floatCtpMenuArrow');
 
   document.getElementById('floatCtpSelectAll')?.addEventListener('click', () => { _closePanel(); _doAll();   });
   document.getElementById('floatCtpCut')  ?.addEventListener('click', () => { _closePanel(); _doCut();   });
   document.getElementById('floatCtpList') ?.addEventListener('click', () => { _closePanel(); _doList();  });
   document.getElementById('floatCtpMenuHide')?.addEventListener('click', () => { _closePanel(); hideClipFloat(); });
+
+  // ── Edit 그룹 기능 (RUN TOOL에서 이관) ──
+  function _getEditRange(view) {
+    const sel = view.state.selection.main;
+    if (sel.from !== sel.to) return { from: sel.from, to: sel.to };
+    return { from: 0, to: view.state.doc.length };
+  }
+  let _caseStage = 0;
+  document.getElementById('floatCtpCaseTransform')?.addEventListener('click', () => {
+    _closePanel();
+    const view = window.Editor?.get?.(); if (!view) return;
+    const { from, to } = _getEditRange(view); if (from === to) return;
+    const src = view.state.sliceDoc(from, to);
+    let out;
+    if (_caseStage === 0) out = src.toUpperCase();
+    else if (_caseStage === 1) out = src.toLowerCase();
+    else out = src.toLowerCase().replace(/(^|\s)(\S)/g, (_, ws, ch) => ws + ch.toUpperCase());
+    _caseStage = (_caseStage + 1) % 3;
+    if (out === src) return;
+    view.dispatch({ changes: { from, to, insert: out }, selection: { anchor: from, head: from + out.length }, userEvent: 'input.replace' });
+  });
+  document.getElementById('floatCtpTabToSpace')?.addEventListener('click', () => {
+    _closePanel();
+    const view = window.Editor?.get?.(); if (!view) return;
+    const { from, to } = _getEditRange(view); if (from === to) return;
+    const src = view.state.sliceDoc(from, to);
+    if (!src.includes('\t')) return;
+    const out = src.replace(/\t/g, ' '.repeat(view.state.tabSize || 4));
+    view.dispatch({ changes: { from, to, insert: out }, selection: { anchor: from, head: from + out.length }, userEvent: 'input.replace' });
+  });
+  document.getElementById('floatCtpTrimTrailing')?.addEventListener('click', () => {
+    _closePanel();
+    const view = window.Editor?.get?.(); if (!view) return;
+    const { from, to } = _getEditRange(view); if (from === to) return;
+    const src = view.state.sliceDoc(from, to);
+    const out = src.replace(/[ \t]+$/gm, '');
+    if (out === src) return;
+    view.dispatch({ changes: { from, to, insert: out }, selection: { anchor: from, head: from + out.length }, userEvent: 'input.replace' });
+  });
 
   // Menu → Menu: 자기 Hide + Menu pill(허브) 표시
   document.getElementById('floatCtpMenuHub')?.addEventListener('click', () => {

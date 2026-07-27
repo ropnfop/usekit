@@ -14,6 +14,7 @@ from usekit.classes.common.errors.helper_debug import log_and_raise, debug_print
 from usekit.classes.common.utils.helper_search import find_data_search, detect_format_from_file
 from usekit.classes.common.utils.helper_format import get_format_parser      
 from usekit.classes.common.utils.helper_keypath import resolve_key_path
+from usekit.classes.data.base.post.sub.parser_json_sub import _search_keydata_in_json
 from usekit.classes.data.base.load.sub.dbl_read_sub import proc_read_data
 from usekit.classes.data.base.load.sub.dbl_common_sub import _filter_load_kwargs
 
@@ -22,11 +23,18 @@ from usekit.classes.data.base.load.sub.dbl_common_sub import _filter_load_kwargs
 # Parameter Filtering
 # ===============================================================================
 
+# Line-based formats: keydata means grep-search (handled inside the parser,
+# not dict-path navigation). For these, keydata/regex/etc. flow to the parser
+# and the ops-layer dict navigation is skipped.
+LINE_BASED_FORMATS = {"txt", "md", "log"}
+
 # Parameters used only at ops layer (should NOT be passed to proc/parser)
 OPS_ONLY_PARAMS = {
     # Ops layer processing
     'keydata', 'default', 'recursive', 'find_all', 'create_missing',
     'walk', 'case_sensitive',
+    # keydata value-search (handled at ops layer via _search_keydata_in_json)
+    'search_value', 'regex', 'keydata_exists',
     
     # Future features
     'k', 'kv', 'kc', 'kf',
@@ -58,7 +66,14 @@ def _extract_parser_kwargs(params: dict, fmt: str) -> dict:
     """
     # First remove ops-only params
     candidate_params = {k: v for k, v in params.items() if k not in OPS_ONLY_PARAMS}
-    
+
+    # Line-based formats (txt/md/log) handle keydata as grep INSIDE the parser,
+    # so re-admit the search params that OPS_ONLY_PARAMS stripped above.
+    if fmt in LINE_BASED_FORMATS:
+        for key in ("keydata", "regex", "case_sensitive"):
+            if params.get(key) is not None:
+                candidate_params[key] = params[key]
+
     # Then apply format-specific whitelist
     return _filter_load_kwargs(fmt, **candidate_params)
 
@@ -106,10 +121,31 @@ def _process_single_file(file_path: Path, p: dict) -> Any:
     # Read data with parser options
     data = proc_read_data(fmt_actual, file_path, **parser_kwargs)
     
-    # Apply keydata navigation if specified
+    # Apply keydata navigation/search if specified
     if p["keydata"] is not None:
+        # Line-based formats already handled keydata as grep inside the parser.
+        # `data` is the grep result — do NOT apply dict-path navigation.
+        if fmt_actual in LINE_BASED_FORMATS:
+            return data
         if p["debug"]:
             print(f"[{fmt_actual.upper()}] Navigating keydata: {p['keydata']}")
+        # Use the search engine when value-filter options are present;
+        # with no search options it behaves exactly like plain navigation.
+        search_value = p.get("search_value")
+        keydata_exists = p.get("keydata_exists", False)
+        if search_value is not None or keydata_exists:
+            result = _search_keydata_in_json(
+                data,
+                keydata=p["keydata"],
+                search_value=search_value,
+                keydata_exists=keydata_exists,
+                recursive=p["recursive"],
+                find_all=p["find_all"],
+                case_sensitive=p.get("case_sensitive", False),
+                regex=p.get("regex", False),
+            )
+            # Preserve default semantics on miss
+            return result if result is not None else p["default"]
         return resolve_key_path(
             data,
             p["keydata"],
@@ -241,12 +277,28 @@ def read_operation(**kwargs) -> Any:
     """
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # [0] Mem shortcut — no file I/O
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if kwargs.get("loc") == "mem":
+        from usekit.classes.data.base.load.ops.dbl_mem_store import mem_read
+        return mem_read(kwargs.get("name"), kwargs.get("default"))
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # [1] Extract Parameters
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     p = params_for_read(**kwargs)
-    
+
     # Warn about future features (k, kv, kc, kf)
     warn_future_features(p)
+    
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # [1.5] Direct path shortcut — name이 절대경로/Path이면 검색 스킵
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    direct_path = Path(p["name"]) if p.get("name") else None
+    if direct_path and direct_path.is_absolute() and direct_path.is_file():
+        if p["debug"]:
+            print(f"[READ] Direct path: {direct_path}")
+        return _process_single_file(direct_path, p)
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # [2] Find Files (helper_search handles ALL cases)
@@ -258,6 +310,7 @@ def read_operation(**kwargs) -> Any:
         loc=p["loc"],
         user_dir=p.get("dir_path"),
         walk=p["walk"],
+        extensions=p.get("ext"),
         case_sensitive=p.get("case_sensitive", False),
         debug=p["debug"]
     )

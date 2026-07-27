@@ -68,6 +68,7 @@ TARGETING_LAYER = {
     "case_sensitive": False,
     "search_mode": "value",
     "column": None,
+    "name_only": False,
     
     # TXT operation - Tail
     "tail_all": None,

@@ -1,0 +1,240 @@
+# Path: usekit/sys/sys_yaml/sys_ai.yaml
+# -----------------------------------------------------------------------------------------------
+#  AI provider × model registry — single source of truth.
+#
+#  Consumed by:
+#    - sbi_ai_meta.py     : Python-side resolver (alias → full model, adapter lookup)
+#    - /api/ai_meta       : JSON endpoint for the editor UI
+#    - float_ai.js        : panel renders from this; no hardcoded model lists
+#    - sbi_ai_chat.py     : alias resolved before ua.conn()
+#
+#  Edit this file → hit the editor's Reload button (/api/reload_usekit)
+#  → panel re-renders. No code change needed to add a model or provider.
+# -----------------------------------------------------------------------------------------------
+
+# Default selection on first launch
+default_provider: groq
+
+
+# Tier metadata — drives the section headers in the model panel.
+# NOTE: `tier` = which UI section to render under (presentation axis).
+#       `auth` (per provider) = how the provider authenticates (behaviour axis).
+#       The two are independent: probe()/key UI key off `auth`, panel layout off `tier`.
+tiers:
+  free:
+    label: "FREE"
+    description: "No API key required"
+    order: 1
+  api:
+    label: "API"
+    description: "Requires API key"
+    order: 2
+  cli:
+    label: "CLI"
+    description: "Local CLI tools (subprocess)"
+    order: 3
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Providers
+# ──────────────────────────────────────────────────────────────────
+
+providers:
+
+  # ─── FREE ───────────────────────────────────────────────────────
+
+  groq:
+    tier: free
+    auth: none
+    label: "Groq"
+    description: "Groq LPU via g4f proxy. No key needed. Fast inference."
+    color: "#f97316"
+    adapter: openai
+    base_url: "https://g4f.space/api/groq"
+    key_env: null
+    enabled: true
+    default: LLAMA70
+    models:
+      LLAMA70:   "llama-3.3-70b-versatile"
+      GPTOSS:    "openai/gpt-oss-120b"
+      QWEN32:    "qwen/qwen3-32b"
+      LLAMA4:    "meta-llama/llama-4-scout-17b-16e-instruct"   # multimodal (image+text)
+      LLAMA8:    "llama-3.1-8b-instant"
+
+  ollama:
+    tier: free
+    auth: none
+    label: "Local"
+    description: "Ollama on localhost (must be running on port 11434)."
+    color: "#10b981"
+    adapter: openai
+    base_url: "http://localhost:11434/v1"
+    key_env: null
+    enabled: true
+    default: LLAMA3
+    models:
+      LLAMA3:    "llama3"
+      LLAMA31:   "llama3.1"
+      MISTRAL:   "mistral"
+      GEMMA2:    "gemma2"
+      QWEN25:    "qwen2.5-coder"
+
+  qwen:
+    tier: free
+    auth: none
+    label: "Qwen"
+    description: "Alibaba Qwen (unturf endpoint — closed 2026-04-15)."
+    color: "#c084fc"
+    adapter: openai
+    base_url: "https://qwen.ai.unturf.com/v1"
+    key_env: null
+    enabled: false
+    default: QWEN
+    models:
+      QWEN:    "hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q4_K_M"
+
+
+  # ─── API ────────────────────────────────────────────────────────
+
+  openai:
+    tier: api
+    auth: api_key
+    label: "GPT"
+    description: "OpenAI GPT family. Requires sk-... API key."
+    color: "#10a37f"
+    adapter: openai
+    base_url: "https://api.openai.com/v1"
+    key_env: "OPENAI_API_KEY"
+    key_pattern: "^sk-"
+    enabled: true
+    default: GPT4O
+    models:
+      GPT4O:     "gpt-4o"
+      GPT4OM:    "gpt-4o-mini"
+      GPT4T:     "gpt-4-turbo"
+      GPT4:      "gpt-4"
+      GPT35:     "gpt-3.5-turbo"
+      O1:        "o1"
+      O1M:       "o1-mini"
+
+  anthropic:
+    tier: api
+    auth: api_key
+    label: "Claude"
+    description: "Anthropic Claude family (direct API). Adapter pending."
+    color: "#cc785c"
+    adapter: anthropic
+    base_url: "https://api.anthropic.com/v1"
+    key_env: "ANTHROPIC_API_KEY"
+    key_pattern: "^sk-ant-"
+    enabled: false
+    default: SONNET
+    models:
+      OPUS:      "claude-opus-4"
+      SONNET:    "claude-sonnet-4"
+      HAIKU:     "claude-haiku-4"
+
+  gemini:
+    tier: api
+    auth: api_key
+    label: "Gemini"
+    description: "Google Gemini family. Requires a Gemini API key (AIza... or AQ.... format)."
+    color: "#4285f4"
+    # adapter=openai → routes through ProvOpenAI via Gemini's OpenAI-compat layer.
+    # No google-genai SDK needed; same code path as Groq/OpenRouter/OpenAI.
+    # base_url MUST end in /openai (hits /chat/completions, not /responses).
+    adapter: openai
+    base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
+    key_env: "GOOGLE_API_KEY"
+    # New AI Studio keys use the AQ. prefix; older keys use AIza. Accept both.
+    key_pattern: "^(AIza|AQ\\.)"
+    enabled: true
+    default: G25FL
+    models:
+      # Verified free (HTTP 200) on this key — device test 2026-06-12.
+      G25FL:     "gemini-2.5-flash-lite"          # GA, stable, cheapest — default
+      G25F:      "gemini-2.5-flash"               # GA, higher quality (thinking model)
+      G3FL:      "gemini-3.1-flash-lite-preview"  # newest lite (preview — may shift)
+      G3F:       "gemini-3-flash-preview"         # newer gen (preview — may shift)
+      G25P:      "gemini-2.5-pro"                 # paid only (needs billing)
+      # 2.0 Flash/Flash-Lite: free quota 0 (429) + retired 2026-06-01 — excluded.
+
+  groq_api:
+    tier: api
+    auth: api_key
+    label: "Groq API"
+    description: "Groq official API (api.groq.com). Requires gsk_... key. Same LPU, paid/keyed."
+    color: "#f97316"
+    adapter: openai
+    base_url: "https://api.groq.com/openai/v1"
+    key_env: "GROQ_API_KEY"
+    key_pattern: "^gsk_"
+    enabled: true
+    default: LLAMA70
+    models:
+      LLAMA70:   "llama-3.3-70b-versatile"
+      GPTOSS:    "openai/gpt-oss-20b"
+      GPTOSS120: "openai/gpt-oss-120b"
+      QWEN32:    "qwen/qwen3-32b"
+      LLAMA4:    "meta-llama/llama-4-scout-17b-16e-instruct"
+      LLAMA8:    "llama-3.1-8b-instant"
+
+  openrouter:
+    tier: api
+    auth: api_key
+    label: "OpenRouter"
+    description: "OpenRouter unified API (openrouter.ai). 300+ models, OpenAI-compatible. sk-or- key."
+    color: "#6467f2"
+    adapter: openai
+    base_url: "https://openrouter.ai/api/v1"
+    key_env: "OPENROUTER_API_KEY"
+    key_pattern: "^sk-or-"
+    enabled: true
+    default: FREE
+    models:
+      FREE:      "openrouter/auto"
+      GPTOSS:    "openai/gpt-oss-120b:free"
+      GLM:       "z-ai/glm-4.5-air:free"
+      LLAMA70:   "meta-llama/llama-3.3-70b-instruct"
+
+
+  # ─── CLI ────────────────────────────────────────────────────────
+
+  claude_code:
+    tier: cli
+    auth: cli
+    label: "Claude Code"
+    description: "Anthropic's agentic CLI (uk ai claude). Auto picks model."
+    color: "#a78bfa"
+    cli_check: "claude"
+    enabled: true
+    default: AUTO
+    models:
+      AUTO:      "auto"
+      SONNET:    "sonnet"
+      OPUS:      "opus"
+      HAIKU:     "haiku"
+
+  codex:
+    tier: cli
+    auth: cli
+    label: "Codex"
+    description: "OpenAI Codex CLI (planned)."
+    color: "#10a37f"
+    cli_check: "codex"
+    enabled: false
+    models: {}
+
+  gemini_cli:
+    tier: cli
+    auth: cli
+    label: "Gemini CLI"
+    description: "Google's Gemini CLI (planned)."
+    color: "#4285f4"
+    cli_check: "gemini"
+    enabled: false
+    models: {}
+
+# -----------------------------------------------------------------------------------------------
+# [EOF]
+# -----------------------------------------------------------------------------------------------

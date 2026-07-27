@@ -42,7 +42,7 @@ def _filter_dump_kwargs(fmt: str, for_file: bool = True, **kwargs) -> dict:
     """Filter kwargs to only include parameters supported by the format's dump function."""
     format_specific = {
         'json': ['indent', 'sort_keys', 'ensure_ascii', 'separators', 'wrap', 
-                 'append', 'append_mode', 'overwrite', 'safe', 'encoding'],
+                 'append', 'append_mode', 'overwrite', 'safe', 'encoding', 'compact'],
         'yaml': ['indent', 'sort_keys', 'default_flow_style', 'width', 'allow_unicode'],
         'toml': ['indent', 'sort_keys'],
         'txt': [],
@@ -89,7 +89,7 @@ def _filter_load_kwargs(fmt: str, **kwargs) -> dict:
         'yaml': ['unwrap_key', 'force_dict', 'return_meta', 'encoding'],
         'txt': ['unwrap_key', 'force_dict', 'return_meta', 'encoding', 'newline',
                 # TXT-specific read options
-                'regex', 'invert_match', 'lines', 'line_numbers', 'strip', 'strip_empty',
+                'keydata', 'regex', 'case_sensitive', 'invert_match', 'lines', 'line_numbers', 'strip', 'strip_empty',
                 'tail_all', 'tail_top', 'tail_mid', 'tail_bottom',
                 'append', 'append_newline', 'replace_all', 'max_count'],
         'csv': ['unwrap_key', 'force_dict', 'return_meta', 'encoding',

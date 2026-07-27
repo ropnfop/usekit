@@ -53,7 +53,8 @@ def _get_path(p: dict) -> Optional[Path]:
         loc=p["loc"],
         user_dir=p.get("dir_path"),
         cus=p["cus"],
-        ensure_ext=False
+        ensure_ext=False,
+        ext=p.get("ext")
     )
     
     if p["debug"]:

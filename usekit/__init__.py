@@ -13,11 +13,11 @@ if any("usekit.cli" in arg for arg in _sys.argv[:1]) or \
 
 # Import all from usemain
 from .classes.core.env.loader_env import load_env
-load_env()
+load_env(auto_copy=False)
 from .usemain import *
 
 # Version info
-__version__ = "0.2.0"
+__version__ = "0.2.11"
 __author__ = "THE Little Prince"
 
 # ----------------------------------------------------------------------------------------------- 

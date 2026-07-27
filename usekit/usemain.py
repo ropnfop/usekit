@@ -25,29 +25,24 @@ from usekit.classes.wrap.safe.use_safe import safe, s
 _tick("USEKIT safe loaded")
 
 # [OPTIONAL: PRELOAD SAFE IN BACKGROUND]
-# Uncomment to start loading safe immediately (adds ~0s to startup, eliminates 8s first-use delay)
-safe.preload()
+# Colab + Drive 없음은 skip (휘발성 환경, 임포트 속도 우선)
+from usekit.classes.wrap.base.use_base import _should_preload
+if _should_preload():
+    safe.preload()
 _tick("USEKIT safe preload started")
 
-# [SUPPORT UTILITIES: Time & Watch & Database]
-from usekit.classes.wrap.sub.use_support import ut, uw, ud
+# [SUPPORT UTILITIES: Time & Watch & Database & System]
+from usekit.classes.wrap.sub.use_support import ut, uw, ud, us, uk, uu, ue
 _tick("USEKIT support loaded")
 
-# [REFIXING EXTENSIONS]
-# Rebinding and reloading optional extension modules for dynamic usekit augmentation
-# from usekit.classes.class_ext import ext 
-# from usekit.classes.classrefs.refs_use_ext  import utt, uww, uai, udd, u, w, t
-# from usekit.classes.classrefs.refs_aliases import uf, e, ef
-# from usekit.classes.classrefs.refs_usesafe import usf, stt, sai
-# from usekit.classes.classrefs.refs_extsafe import esf
-
-# More learn use.help()
+# [LLM: AI/LLM provider interface]
+from usekit.llm.llm_lazy import ua
+_tick("USEKIT ua loaded")
 
 # [EXPORT DEFINITIONS]
 __all__ = [    
-    "use", "u", "safe", "s", "ut", "uw", "ud"
-    # "utt", "uww", "udd", "uai", "ext",
-    # "usf", "esf", "u", "uf", "e", "ef", "w", "t"
+    "use", "u", "safe", "s", "ut", "uw", "ud", "us", "uk", "uu", "ue",
+    "ua",
 ]
 
 # [LOADER STATUS]

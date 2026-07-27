@@ -453,6 +453,7 @@ def list_operation(**kwargs) -> Union[List[str], Dict[str, Any], List[Dict[str, 
             loc=p["loc"],
             user_dir=p.get("dir_path"),
             walk=True,  # Recursive search
+            extensions=p.get("ext"),
             case_sensitive=False,
             debug=p.get("debug", False)
         )

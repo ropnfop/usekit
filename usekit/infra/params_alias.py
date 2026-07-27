@@ -36,6 +36,7 @@ ALIAS_MAP = {
     "tail_top": "tt",
     "tail_mid": "tm",
     "tail_bottom": "tb",
+    "name_only": "no",
     
     # System
     "debug": "dbg",

@@ -162,7 +162,7 @@ def build_extension_list(
 def find_data_search(
     format_type: str = "txt",
     mod: Optional[str] = None,
-    pattern: str = "*",
+    pattern: Union[str, Path] = "*",
     loc: str = "base",
     user_dir: str = None,
     cus: str = None,
@@ -271,6 +271,7 @@ def find_data_search(
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # [4] 패턴 필터링
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    pattern = str(pattern)  # Path → str 안전 변환
     pattern_glob = pattern.replace("%", "*")  # SQL LIKE → glob
     
     # Smart pattern: "test" → "test.*" (unless already has wildcard or dot)

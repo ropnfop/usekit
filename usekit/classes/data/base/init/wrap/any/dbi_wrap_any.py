@@ -180,6 +180,34 @@ def has_any_cache(name=None, mod=None, dir_path=None, keydata=None, cus=None, **
     return _DataHd.has_cache(name=name, mod=mod, dir_path=dir_path, keydata=keydata, cus=cus, **kwargs)
 
 # ─────────────────────────────────────────────────────────────────────────────
+# MEM — process-level in-memory store (no file I/O)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def read_any_mem(name=None, **kwargs):
+    """Read from in-memory store."""
+    return _DataHd.read_mem(name=name, **kwargs)
+
+def write_any_mem(data=None, name=None, **kwargs):
+    """Write to in-memory store."""
+    return _DataHd.write_mem(data=data, name=name, **kwargs)
+
+def update_any_mem(data=None, name=None, **kwargs):
+    """Update (merge) in in-memory store."""
+    return _DataHd.update_mem(data=data, name=name, **kwargs)
+
+def delete_any_mem(name=None, **kwargs):
+    """Delete from in-memory store."""
+    return _DataHd.delete_mem(name=name, **kwargs)
+
+def has_any_mem(name=None, **kwargs):
+    """Check existence in in-memory store."""
+    return _DataHd.has_mem(name=name, **kwargs)
+
+def list_any_mem(**kwargs):
+    """List all keys in in-memory store."""
+    return _DataHd.list_mem()
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Usage Examples
 # ─────────────────────────────────────────────────────────────────────────────
 

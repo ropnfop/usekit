@@ -274,10 +274,17 @@ def delete_operation(**kwargs) -> Any:
     """
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # [0] Mem shortcut — no file I/O
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if kwargs.get("loc") == "mem":
+        from usekit.classes.data.base.load.ops.dbl_mem_store import mem_delete
+        return mem_delete(kwargs.get("name"))
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # [1] Extract Parameters
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     p = params_for_delete(**kwargs)
-    
+
     # Warn about future features (k, kv, kc, kf)
     warn_future_features(p)
     
@@ -338,6 +345,7 @@ def delete_operation(**kwargs) -> Any:
         loc=p["loc"],
         user_dir=p.get("dir_path"),
         walk=walk,
+        extensions=p.get("ext"),
         case_sensitive=p.get("case_sensitive", False),
         debug=p["debug"]
     )

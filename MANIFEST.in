@@ -1,3 +1,5 @@
 include README.md
 include usekit/.env.example
 include usekit/sys/sys_yaml/sys_const.yaml
+include usekit/sys/sys_yaml/project_meta.md
+recursive-include usekit/sys/sys_ddl *.sql

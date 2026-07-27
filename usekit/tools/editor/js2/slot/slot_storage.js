@@ -559,6 +559,69 @@ const SlotStorage = (function () {
             .map(k => k.slice(SLOT_PREFIX.length));
     }
 
+    // ── Chat-file API (챗 기록 저장, prefix: "chat_") ─────────────
+    const CHAT_PREFIX = 'chat_';
+
+    function _chatKey(name) { return CHAT_PREFIX + name; }
+
+    function writeChat(name, data) {
+        return writeLocal(_chatKey(name), data);
+    }
+
+    function readChat(name) {
+        return readLocal(_chatKey(name));
+    }
+
+    async function readChatAsync(name) {
+        return readLocalAsync(_chatKey(name));
+    }
+
+    function removeChat(name) {
+        removeLocal(_chatKey(name));
+    }
+
+    function migrateChatKey(oldName, newName) {
+        return migrateLocalKey(_chatKey(oldName), _chatKey(newName), { allowOverwrite: true });
+    }
+
+    // 챗파일 목록 — "chat_" prefix 제거해서 반환
+    function listChatFileNames() {
+        return [..._cache.keys()]
+            .filter(k => k.startsWith(CHAT_PREFIX))
+            .map(k => k.slice(CHAT_PREFIX.length));
+    }
+
+    // ── Job-file API (job 기록 저장, prefix: "job_") ──────────────
+    const JOB_PREFIX = 'job_';
+    
+    function _jobKey(name) { return JOB_PREFIX + name; }
+    
+    function writeJob(name, data) {
+        return writeLocal(_jobKey(name), data);
+    }
+    
+    function readJob(name) {
+        return readLocal(_jobKey(name));
+    }
+    
+    async function readJobAsync(name) {
+        return readLocalAsync(_jobKey(name));
+    }
+    
+    function removeJob(name) {
+        removeLocal(_jobKey(name));
+    }
+    
+    function migrateJobKey(oldName, newName) {
+        return migrateLocalKey(_jobKey(oldName), _jobKey(newName), { allowOverwrite: true });
+    }
+    
+    function listJobFileNames() {
+        return [..._cache.keys()]
+            .filter(k => k.startsWith(JOB_PREFIX))
+            .map(k => k.slice(JOB_PREFIX.length));
+    }
+
     // ── Meta helpers ──────────────────────────────────────────────
     function getLocalOnlyMeta(name) {
         try {
@@ -598,6 +661,8 @@ const SlotStorage = (function () {
         readLocal, readLocalAsync, writeLocal, removeLocal, localKeyExists, migrateLocalKey,
         listLocalSlotNames,
         writeSlot, readSlot, readSlotAsync, removeSlot, migrateSlotKey, listSlotFileNames,
+        writeChat, readChat, readChatAsync, removeChat, migrateChatKey, listChatFileNames,
+        writeJob, readJob, readJobAsync, removeJob, migrateJobKey, listJobFileNames,
         getLocalOnlyMeta, getLocalOnlyMetaAsync,
         sanitizeFileName,
         sweepSwapFiles: _sweepSwapRetryQueue,
