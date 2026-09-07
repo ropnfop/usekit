@@ -149,15 +149,40 @@ providers:
     # New AI Studio keys use the AQ. prefix; older keys use AIza. Accept both.
     key_pattern: "^(AIza|AQ\\.)"
     enabled: true
-    default: G25FL
+    default: G35FL
+    # 260816 RENAME. Aliases now name the MODEL, one per generation+tier, and
+    # nothing else. The old names (G3FL/G3F) were relative words — "the new
+    # lite" — so when Google shipped 3.5 and 3.6 the names kept pointing at
+    # older ids while still reading as "newest". A name that ages is a name
+    # that lies (원칙 34).
+    #
+    # Role assignment (MAIN / SUB / MAIN_LITE …) does NOT live here. usekit is
+    # the model dictionary; which role a model plays is the note's decision and
+    # sits in emo/models.py. Two layers, one fact each.
+    #
+    # Verified on the serving key by probe_gemini_models.py, 2026-08-16:
+    # /models listed all of these AND each returned 200 with a matching
+    # `model` field (no repoint). gemini-3.1-flash: 404, does not exist —
+    # the 3.1 text line ships lite only.
     models:
-      # Verified free (HTTP 200) on this key — device test 2026-06-12.
-      G25FL:     "gemini-2.5-flash-lite"          # GA, stable, cheapest — default
-      G25F:      "gemini-2.5-flash"               # GA, higher quality (thinking model)
-      G3FL:      "gemini-3.1-flash-lite-preview"  # newest lite (preview — may shift)
-      G3F:       "gemini-3-flash-preview"         # newer gen (preview — may shift)
+      G37F:      "gemini-3.7-flash"               # GA 08-13
+      G36F:      "gemini-3.6-flash"               # GA 07-21
+      G35F:      "gemini-3.5-flash"               # GA
+      G35FL:     "gemini-3.5-flash-lite"          # GA 07-21
+      G31FL:     "gemini-3.1-flash-lite"          # GA (preview successor)
+      # --- 2.5 cluster: SHUTDOWN 2026-10-16. Kept only so an admin cell can
+      #     still reach them before the date; no role points here.
+      G25F:      "gemini-2.5-flash"
+      G25FL:     "gemini-2.5-flash-lite"
       G25P:      "gemini-2.5-pro"                 # paid only (needs billing)
-      # 2.0 Flash/Flash-Lite: free quota 0 (429) + retired 2026-06-01 — excluded.
+      # --- retired / deliberately absent ---
+      # gemini-3.1-flash-lite-preview : superseded by G31FL. Same model, second
+      #   id; keeping both would double-count one quota bucket as two.
+      # gemini-3-flash-preview        : preview line, demoted 260709 (latency).
+      # gemini-flash-latest / -lite-latest : moving aliases GOOGLE repoints on
+      #   two weeks' notice. Never route here — an id we do not author is the
+      #   exact failure this rename exists to remove.
+      # 2.0 Flash/Flash-Lite: free quota 0 (429) + retired 2026-06-01.
 
   groq_api:
     tier: api
