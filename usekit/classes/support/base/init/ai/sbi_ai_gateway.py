@@ -399,14 +399,35 @@ def _adapter_ua(
                        fatal=False, error=f"ua call failed: {e}",
                        elapsed=time.time() - t0)
 
-    text = (result or {}).get("text", "") if isinstance(result, dict) else str(result)
-    # ua.run does not surface HTTP status; treat empty text as soft failure.
+    rd = result if isinstance(result, dict) else {}
+    text = rd.get("text", "") if rd else str(result)
     ok = bool(text)
+    # REAL TRANSPORT SIGNALS (260917 어린왕자): the parser now carries the HTTP
+    # status (REST) or the code read from the SDK exception, plus retry_after
+    # from a 429 body. Before this every ua exit reported 200/None and the
+    # caller had to GUESS a quota hit from elapsed time (pj01 fop.py QUOTA
+    # BENCH heuristic). `raw` is kept slim — status/error/finish only, never
+    # the response body.
+    inner_raw = rd.get("raw") if isinstance(rd.get("raw"), dict) else {}
+    sc = rd.get("status_code")
+    if sc is None:
+        sc = inner_raw.get("_status_code")
+    if sc is None and ok:
+        sc = 200
+    err = None if ok else (rd.get("error") or inner_raw.get("_error") or "empty response")
+    fatal = bool(sc) and (sc == 429 or 500 <= int(sc) < 600)
     return _result(
         ok=ok, text=text, provider=provider, model=conn.get("model", ""),
-        status_code=200 if ok else None, fatal=False,
-        error=None if ok else "empty response", elapsed=time.time() - t0,
-        usage=(result or {}).get("usage") if isinstance(result, dict) else None,
+        status_code=sc, fatal=fatal, retry_after=rd.get("retry_after"),
+        error=err, elapsed=time.time() - t0,
+        usage=rd.get("usage") if rd else None,
+        raw=({"status_code": sc, "error": err, "finish": rd.get("finish"),
+              # 260919: how many images the provider ACTUALLY attached (None
+              # when the provider does not report it). A photo-reading call
+              # that went out with 0 images is a fabricated reading, and the
+              # caller must be able to see that without the request body.
+              "n_images": inner_raw.get("_n_images"),
+              "n_images_asked": inner_raw.get("_n_images_asked")} if rd else None),
     )
 
 

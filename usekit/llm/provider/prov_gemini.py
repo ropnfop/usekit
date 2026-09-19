@@ -193,7 +193,12 @@ class ProvGemini(ProviderBase):
 
         except Exception as e:
             elapsed = round(time.time() - started, 3)
-            return {"_elapsed": elapsed, "_status_code": None, "_error": str(e)}
+            # google.genai APIError carries .code (429, 503, ...); keep it so
+            # the parser/gateway can tell quota from a real failure
+            code = getattr(e, "code", None) or getattr(e, "status_code", None)
+            return {"_elapsed": elapsed,
+                    "_status_code": int(code) if isinstance(code, int) else None,
+                    "_error": str(e)}
 
         return {"_elapsed": 0, "_error": "no valid mode"}
 

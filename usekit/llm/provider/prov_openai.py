@@ -181,7 +181,22 @@ class ProvOpenAI(ProviderBase):
                 on_delta=on_delta if callable(on_delta) else None)
             if out is not None:
                 return out
-            # native failed → last-resort OpenAI-compat blocking below.
+            # NATIVE FAILED (260919, live 19:04 walk1:G36F): this used to fall
+            # through to the OpenAI-compat call below. Two problems with that:
+            # (1) the compat body carries NO images, no thinkingConfig and no
+            # systemInstruction, so a "success" there is a different, blinder
+            # call than the one asked for; (2) Gemini's compat layer returns
+            # errors as a LIST ([{"error":{...}}]) and `data["_elapsed"]`
+            # below then dies with "list indices must be integers or slices,
+            # not str" — masking the real 429/503 and its retry hint. Return
+            # the native failure itself; the caller's walk/retry logic reads
+            # status/error like any other fault.
+            _nf = getattr(self, "_native_fail", None) or {}
+            return {
+                "_elapsed": _nf.get("elapsed", 0),
+                "_status_code": _nf.get("status"),
+                "_error": _nf.get("error") or "gemini native call failed",
+            }
 
         # generation params
         temperature = config.get("temperature", 0.3)
@@ -219,6 +234,11 @@ class ProvOpenAI(ProviderBase):
             )
             elapsed = round(time.time() - started, 3)
             data = resp.json()
+            if not isinstance(data, dict):
+                # some compat layers answer errors as a list — keep the body
+                # instead of crashing on the subscript (260919)
+                return {"_elapsed": elapsed, "_status_code": resp.status_code,
+                        "_error": f"http {resp.status_code}: {resp.text[:300]}"}
             data["_elapsed"] = elapsed
             data["_status_code"] = resp.status_code
             return data
@@ -305,6 +325,7 @@ class ProvOpenAI(ProviderBase):
         # recent user turn so the model actually SEES them. Gemini REST v1beta
         # uses inlineData{mimeType,data}. Non-data/garbage entries are skipped.
         _imgs = config.get("images") or []
+        n_att = 0          # images ACTUALLY attached (260919: the reader must know)
         if _imgs:
             last_user = next((c for c in reversed(contents)
                               if c.get("role") == "user"), None)
@@ -318,6 +339,15 @@ class ProvOpenAI(ProviderBase):
                     mime = head[len("data:"):] or "image/jpeg"
                     last_user["parts"].append(
                         {"inlineData": {"mimeType": mime, "data": b64}})
+                    n_att += 1
+            if n_att != len(_imgs):
+                try:
+                    import sys as _sys
+                    print(f"[gemini_native] images: {n_att}/{len(_imgs)} attached "
+                          f"(non-data entries skipped) model={model}", file=_sys.stderr)
+                except Exception:
+                    pass
+        self._native_fail = None
 
         # Output budget: search turns thinking ON, and a thinking model can eat the
         # whole budget → the visible answer truncates mid-sentence. Floor the cap
@@ -372,7 +402,15 @@ class ProvOpenAI(ProviderBase):
                 "_elapsed": elapsed,
                 "_status_code": 200,
                 "_streamed": streaming,
+                "_n_images": n_att,      # what the request really carried
+                "_n_images_asked": len(_imgs),
             }
+
+        def _fail(status, body):
+            # remember WHY for send() — the compat fallback is gone for Gemini
+            self._native_fail = {"status": status, "error": body,
+                                 "elapsed": round(time.time() - started, 3)}
+            return None
 
         def _usage(um):
             um = um or {}
@@ -444,6 +482,7 @@ class ProvOpenAI(ProviderBase):
                         continue
                     break
                 if resp.status_code != 200:
+                    _body = ""
                     try:
                         import sys as _sys
                         _body = resp.text[:300]
@@ -454,7 +493,7 @@ class ProvOpenAI(ProviderBase):
                         resp.close()
                     except Exception:
                         pass
-                    return None
+                    return _fail(resp.status_code, f"http {resp.status_code}: {_body}")
                 resp.encoding = "utf-8"   # SSE is UTF-8; requests else guesses latin-1 → 한글 깨짐
                 MARKER = "[[META]]"
                 full = ""        # everything the model emits (answer + [[META]]{...})
@@ -564,7 +603,7 @@ class ProvOpenAI(ProviderBase):
                           f"{resp.text[:300]}", file=_sys.stderr)
                 except Exception:
                     pass
-                return None
+                return _fail(resp.status_code, f"http {resp.status_code}: {(resp.text or '')[:300]}")
             resp.encoding = "utf-8"
             data = resp.json()
             cand = (data.get("candidates") or [{}])[0]
@@ -593,7 +632,9 @@ class ProvOpenAI(ProviderBase):
                           file=_sys.stderr)
                 except Exception:
                     pass
-                return None
+                # an EMPTY answer stays "empty response" upstream (the walk
+                # treats it as a model fault, not a transport error)
+                return _fail(200, "empty response")
             _src = _fmt_sources((cand.get("groundingMetadata") or {}).get("groundingChunks"))
             if not _src and config.get("search"):
                 _src = ("\n\n⚠️ 실시간 검색 결과 없음 — 이 모델이 google_search를 수행하지 "
@@ -603,8 +644,8 @@ class ProvOpenAI(ProviderBase):
             return _shape(text, cand.get("finishReason"),
                           _usage(data.get("usageMetadata")),
                           round(time.time() - started, 3))
-        except Exception:
-            return None
+        except Exception as _e:
+            return _fail(None, f"{type(_e).__name__}: {_e}")
 
     def send_messages(self, messages: list, config: dict) -> dict:
         """POST /chat/completions with full messages array.

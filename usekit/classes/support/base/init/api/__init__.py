@@ -23,6 +23,7 @@ import json
 import re
 from datetime import date
 from http.server import HTTPServer, ThreadingHTTPServer, BaseHTTPRequestHandler
+import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urlparse, parse_qs
@@ -282,7 +283,23 @@ def build_routes(contract: dict, custom_handlers: dict = None) -> tuple:
 # HTTP Server
 # ===============================================================================
 
-_current_handler = None
+# THREAD-LOCAL (260919): serve() uses ThreadingHTTPServer — every request is
+# its own thread — but this used to be a module GLOBAL. Two requests in flight
+# could therefore see each other's handler: _default_user() would read the
+# OTHER request's X-User-Id, and sse() could write a stream into the other
+# request's socket. Both windows were narrow (set at do_* entry, read a few
+# lines later) but real once two people share the server (rsrnote.com) and
+# once a handler streams for a minute (job SSE). One accessor pair below;
+# the do_GET/do_POST bodies read the same as before.
+_tls = threading.local()
+
+
+def _get_handler():
+    return getattr(_tls, "handler", None)
+
+
+def _set_handler(h):
+    _tls.handler = h
 
 
 # ── streaming (SSE) support ─────────────────────────────────────────────────
@@ -313,7 +330,7 @@ def sse(events) -> _Streamed:
                 yield ("done",  {"turn": 7})
             return us.api.sse(gen())
     """
-    h = _current_handler
+    h = _get_handler()
     if h is None:                      # not inside a request — nothing to do.
         return STREAMED
     h.send_response(200)
@@ -344,8 +361,9 @@ def sse(events) -> _Streamed:
 
 def _default_user(params=None, body=None):
     """Resolve user_id from header > query > body > default."""
-    if _current_handler is not None:
-        hdr = _current_handler.headers.get("X-User-Id", "").strip()
+    _h = _get_handler()
+    if _h is not None:
+        hdr = _h.headers.get("X-User-Id", "").strip()
         if hdr:
             return hdr
     if params and params.get("user_id"):
@@ -391,8 +409,7 @@ class _APIHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        global _current_handler
-        _current_handler = self
+        _set_handler(self)
         h = self.routes_get.get(urlparse(self.path).path)
         if not h:
             self._json(E("Not found"), 404)
@@ -406,11 +423,10 @@ class _APIHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self._json(E(str(e)), 500)
         finally:
-            _current_handler = None
+            _set_handler(None)
 
     def do_POST(self):
-        global _current_handler
-        _current_handler = self
+        _set_handler(self)
         h = self.routes_post.get(urlparse(self.path).path)
         if not h:
             self._json(E("Not found"), 404)
@@ -425,7 +441,7 @@ class _APIHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self._json(E(str(e)), 500)
         finally:
-            _current_handler = None
+            _set_handler(None)
 
     def log_message(self, fmt, *args):
         pass

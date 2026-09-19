@@ -357,6 +357,97 @@ def start(
     return {"ok": True, "job_id": job_id, "status": "queued"}
 
 
+def _fn_runner(job_id: str, fn, args: tuple, kwargs: dict) -> None:
+    """Background thread for an IN-PROCESS callable (260919).
+
+    Same event pipe as the CLI runner — events.jsonl + live fan-out — but the
+    work is a Python function of THIS process, not a subprocess. `fn` receives
+    a `progress(dict)` callable as its first argument; whatever it passes is
+    emitted as {"event": "progress", ...}. Its return value (JSON-able) rides
+    the terminal "done" event as `result`; an exception becomes "error".
+
+    Why a second runner and not a fake subprocess: the note's turn pipeline
+    (measure -> read -> craft -> black) is plain Python holding a shared DB
+    connection; spawning a CLI for it would mean a second process re-opening
+    everything. A thread is exactly what ThreadingHTTPServer already gives a
+    request — this just detaches the thread from the request's lifetime.
+    """
+    _emit(job_id, {"event": "start", "ts": time.time()})
+    _update_meta(job_id, status="running")
+
+    def progress(ev: Dict[str, Any]) -> None:
+        d = dict(ev or {})
+        d.setdefault("event", "progress")
+        d["ts"] = time.time()
+        _emit(job_id, d)
+
+    result: Any = None
+    err: Optional[str] = None
+    try:
+        result = fn(progress, *args, **kwargs)
+    except Exception as e:      # noqa: BLE001 — the job must always terminate
+        err = f"{type(e).__name__}: {e}"
+
+    if err is None:
+        _emit(job_id, {"event": "done", "ts": time.time(), "result": result})
+        # result also on meta.json: a plain status() poll (no SSE) can read
+        # the outcome, and it survives a server restart.
+        _update_meta(job_id, status="done", ended=time.time(), result=result)
+    else:
+        _emit(job_id, {"event": "error", "ts": time.time(), "error": err})
+        _update_meta(job_id, status="error", ended=time.time(), error=err)
+
+    state = _jobs.get(job_id)
+    if state:
+        state["done"].set()
+
+
+def start_fn(fn, *args, kind: str = "fn", label: str = "",
+             meta: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
+    """
+    Start an in-process background job around a callable (260919).
+
+        start_fn(work, a, b, kind="note.flow", label="craft", meta={...})
+        -> {"ok": True, "job_id": "...", "status": "queued"}
+
+    `fn(progress, *args, **kwargs)` runs in a daemon thread that outlives the
+    HTTP request; `progress({...})` emits a live event. Result/exception land
+    on the terminal event (see _fn_runner). Attach with stream_events() /
+    status() exactly like a CLI job — the reader side does not know which
+    runner produced the events.
+    """
+    if not callable(fn):
+        return {"ok": False, "error": "fn must be callable"}
+
+    job_id = uuid.uuid4().hex[:12]
+    os.makedirs(_job_dir(job_id), exist_ok=True)
+
+    m = {
+        "job_id": job_id,
+        "provider": "fn",
+        "kind": kind,
+        "label": label,
+        "model": None,
+        "prompt_head": label[:200],
+        "session_id_in": None,
+        "session_id": None,
+        "status": "queued",
+        "started": time.time(),
+        "ended": None,
+    }
+    if meta:
+        # caller's own bookkeeping (session, user, room…) — kept on meta.json
+        # so a status() poll after a server restart still says what it was
+        m.update({k: v for k, v in meta.items() if k not in m})
+    _write_meta(job_id, m)
+    _jobs[job_id] = _new_state(m)
+
+    t = threading.Thread(target=_fn_runner, args=(job_id, fn, args, kwargs),
+                         name=f"job-{job_id}", daemon=True)
+    t.start()
+    return {"ok": True, "job_id": job_id, "status": "queued"}
+
+
 def status(job_id: str) -> Dict[str, Any]:
     """Current status snapshot (cheap, no streaming)."""
     state = _jobs.get(job_id)
@@ -467,7 +558,7 @@ def cancel(job_id: str) -> Dict[str, Any]:
     return {"ok": True, "status": meta.get("status", "done")}
 
 
-__all__ = ["start", "status", "list_jobs", "stream_events", "cancel"]
+__all__ = ["start", "start_fn", "status", "list_jobs", "stream_events", "cancel"]
 
 # -----------------------------------------------------------------------------------------------
 # [EOF]
