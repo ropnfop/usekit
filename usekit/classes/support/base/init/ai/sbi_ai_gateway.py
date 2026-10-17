@@ -390,6 +390,9 @@ def _adapter_ua(
                        error=f"ua unavailable: {e}", elapsed=time.time() - t0)
 
     conn = _build_ua_conn(provider, model, config)
+    # 261017: the call's `timeout` used to stop here — the adapter never saw it.
+    # Set EVERY call (ua's config is sticky across conn()), caller override wins.
+    conn["http_timeout"] = (config or {}).get("http_timeout") or timeout
 
     try:
         ua.conn(provider, **conn)
@@ -398,7 +401,12 @@ def _adapter_ua(
         return _result(ok=False, provider=provider, model=conn.get("model", ""),
                        fatal=False, error=f"ua call failed: {e}",
                        elapsed=time.time() - t0)
+    return _shape_ua_result(provider, conn, result, t0)
 
+
+def _shape_ua_result(provider: str, conn: Dict[str, Any], result, t0: float) -> Dict[str, Any]:
+    """ua.run()-shaped dict -> gateway-standard result (shared by the shared-ua
+    adapter and the isolated adapter, so callers cannot tell them apart)."""
     rd = result if isinstance(result, dict) else {}
     text = rd.get("text", "") if rd else str(result)
     ok = bool(text)
@@ -463,7 +471,86 @@ def _adapter_cli(
     )
 
 
+# ── isolated adapter (261017, pj01 multi-user) ──────────────────────
+# _adapter_ua drives the process-wide `ua` singleton: conn() writes the model,
+# api_key, images... into shared state and run() reads them back. Two threads
+# doing that at once could send A's prompt with B's key — so call() serializes
+# EVERY gemini call server-wide (the in-flight lock), and with per-student BYOK
+# keys that is pure loss: student B waits on (or is refused by) student A's
+# call although their keys and quotas are unrelated.
+# This adapter builds a FRESH provider object per call, connects it with this
+# call's own config, sends, parses, closes. Nothing is shared, so no lock is
+# needed; concurrency is bounded by _isolated_sema instead. Result shape is
+# identical to _adapter_ua (same _shape_ua_result).
+def _adapter_isolated(
+    provider: str, prompt: str, *,
+    model: Optional[str], config: Dict[str, Any], timeout: int,
+) -> Dict[str, Any]:
+    t0 = time.time()
+    try:
+        from usekit.llm.base.init.lli_conn import resolve_provider, get_default_url
+        from usekit.llm.base.init.lli_config import LLMConfig
+        from usekit.llm.base.post.llp_recv import recv as _recv
+    except ImportError as e:
+        return _result(ok=False, provider=provider, fatal=False,
+                       error=f"isolated adapter unavailable: {e}",
+                       elapsed=time.time() - t0)
+
+    conn = _build_ua_conn(provider, model, config)
+    conn["http_timeout"] = (config or {}).get("http_timeout") or timeout
+    cfg = LLMConfig().merge(conn)          # generation defaults + this call
+    if not cfg.get("base_url"):
+        _u = get_default_url(provider)
+        if _u:
+            cfg["base_url"] = _u
+    cfg.setdefault("images", [])
+    cfg.setdefault("search", False)
+
+    adapter = None
+    try:
+        adapter = resolve_provider(provider)   # new instance every call
+        adapter.connect(cfg)
+        raw = adapter.send(prompt, cfg)
+        result = _recv(raw, provider=provider)
+    except Exception as e:
+        return _result(ok=False, provider=provider, model=cfg.get("model", ""),
+                       fatal=False, status_code=_status_from(e),
+                       error=f"isolated call failed: {e}", elapsed=time.time() - t0)
+    finally:
+        try:
+            if adapter is not None:
+                adapter.close()
+        except Exception:
+            pass
+    return _shape_ua_result(provider, cfg, result, t0)
+
+
 _ADAPTERS = {"ua": _adapter_ua, "cli": _adapter_cli}
+
+# Opt-in, process-wide: a SERVER (pj01 api) turns this on at start-up; the
+# interactive tools (editor / shell) keep the shared-ua path untouched.
+# Env USEKIT_AI_ISOLATED=1 does the same without code.
+_ISOLATED = os.environ.get("USEKIT_AI_ISOLATED", "").strip() in ("1", "true", "yes")
+_ISOLATED_MAX = 8
+_isolated_sema = None
+
+
+def set_isolated_calls(on: bool = True, max_concurrent: int = 8) -> bool:
+    """Route ua-type providers through _adapter_isolated (no shared state, no
+    per-provider lock; at most `max_concurrent` calls in flight). Returns on."""
+    global _ISOLATED, _ISOLATED_MAX, _isolated_sema
+    _ISOLATED = bool(on)
+    _ISOLATED_MAX = max(1, int(max_concurrent))
+    _isolated_sema = None
+    return _ISOLATED
+
+
+def _iso_sema():
+    global _isolated_sema
+    if _isolated_sema is None:
+        import threading as _th
+        _isolated_sema = _th.BoundedSemaphore(_ISOLATED_MAX)
+    return _isolated_sema
 
 
 # ── in-flight guard (re-entrancy) ───────────────────────────────────
@@ -694,6 +781,23 @@ def call(
 
         ptype = _provider_type(prov)
         adapter = _ADAPTERS.get(ptype, _adapter_ua)
+
+        # ISOLATED (261017): no shared ua state -> no duplicate-call hazard ->
+        # no lock. Concurrency is bounded by the isolated semaphore instead.
+        if _ISOLATED and adapter is _adapter_ua:
+            _emit("call", f"{prov} 호출 중...", provider=prov, type="isolated")
+            with _iso_sema():
+                res = _adapter_isolated(prov, prompt, model=model, config=config,
+                                        timeout=timeout)
+            calls_used += 1
+            res["calls_used"] = calls_used
+            _record_state(prov, res)
+            if res.get("ok"):
+                return res
+            last = res
+            if res.get("fatal"):
+                _emit("fatal", f"{prov} 치명적 오류 — 폴백 시도", provider=prov)
+            continue
 
         # IN-FLIGHT — if this provider is already being called, do not launch
         # a duplicate. Inform the caller it's busy instead.

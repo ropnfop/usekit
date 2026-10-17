@@ -39,6 +39,18 @@ def _read_image(path: str):
     return data, mime
 
 
+_DEFAULT_HTTP_TIMEOUT = 120   # seconds — matches the gateway call() default
+
+
+def _timeout_ms(config: dict) -> int:
+    """config['http_timeout'] (seconds) -> milliseconds, floor 5s."""
+    try:
+        sec = float(config.get("http_timeout") or _DEFAULT_HTTP_TIMEOUT)
+    except (TypeError, ValueError):
+        sec = _DEFAULT_HTTP_TIMEOUT
+    return int(max(5.0, sec) * 1000)
+
+
 class ProvGemini(ProviderBase):
     """Google Gemini SDK adapter (text + image)."""
 
@@ -66,10 +78,17 @@ class ProvGemini(ProviderBase):
             if not api_key:
                 raise ValueError("[prov_gemini] api_key required")
 
-            self._client = genai.Client(
-                api_key=api_key,
-                http_options=genai_types.HttpOptions(api_version="v1"),
-            )
+            # HTTP TIMEOUT (261017, pj01 live): the SDK had no timeout, so one
+            # hung generate_content held the gateway's per-provider in-flight
+            # slot for 70s and every other gemini call came back "busy".
+            # http_timeout is seconds (gateway sets it on every call from its
+            # `timeout`); HttpOptions.timeout is milliseconds.
+            try:
+                _hopt = genai_types.HttpOptions(api_version="v1",
+                                                timeout=_timeout_ms(config))
+            except Exception:   # older google-genai without `timeout`
+                _hopt = genai_types.HttpOptions(api_version="v1")
+            self._client = genai.Client(api_key=api_key, http_options=_hopt)
 
             return {
                 "provider": self.name,
@@ -183,7 +202,8 @@ class ProvGemini(ProviderBase):
                 if search:
                     body["tools"] = [{"google_search": {}}]
 
-                resp = req.post(url, json=body, timeout=30)
+                resp = req.post(url, json=body,
+                                timeout=_timeout_ms(config) / 1000.0)
                 elapsed = round(time.time() - started, 3)
                 data = resp.json()
                 data["_elapsed"] = elapsed
