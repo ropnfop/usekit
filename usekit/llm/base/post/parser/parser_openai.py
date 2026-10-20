@@ -151,6 +151,7 @@ def parse(raw: dict) -> dict:
         "prompt": usage_raw.get("prompt_tokens"),
         "completion": usage_raw.get("completion_tokens"),
         "total": usage_raw.get("total_tokens"),
+        "cached": usage_raw.get("cached_tokens"),   # 261020 implicit-cache hit
     }
 
     status_code = raw.get("_status_code")

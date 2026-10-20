@@ -120,6 +120,23 @@ def _pool_order(pool):
     return live + rest
 
 
+_DEFAULT_READ_TIMEOUT = 180   # seconds — the old hard-coded read cap
+
+
+def _http_to(config: dict):
+    """(connect, read) for requests. 261020 (pj01 live 22:27): the gateway's
+    per-call `timeout` reached config['http_timeout'] (261017) but only
+    prov_gemini (SDK) read it — every teacher call goes through THIS file's
+    native REST path, which kept a hard 180s read cap. A measure call with
+    timeout=20 then waited 39.7s for a 503. Caller value wins; floor 5s."""
+    try:
+        sec = float((config or {}).get("http_timeout") or _DEFAULT_READ_TIMEOUT)
+    except (TypeError, ValueError):
+        sec = _DEFAULT_READ_TIMEOUT
+    sec = max(5.0, sec)
+    return (min(10.0, sec), sec)
+
+
 def _resolve_model_id(model: str) -> str:
     """Safety-net alias resolver applied at the HTTP boundary.
 
@@ -230,7 +247,7 @@ class ProvOpenAI(ProviderBase):
                 f"{base_url}/chat/completions",
                 headers=headers,
                 json=body,
-                timeout=(10, 180),
+                timeout=_http_to(config),
             )
             elapsed = round(time.time() - started, 3)
             data = resp.json()
@@ -418,6 +435,9 @@ class ProvOpenAI(ProviderBase):
                 "prompt_tokens": um.get("promptTokenCount"),
                 "completion_tokens": um.get("candidatesTokenCount"),
                 "total_tokens": um.get("totalTokenCount"),
+                # 261020: implicit-cache hit size — the only way to see whether
+                # a prompt change kept the L1/L2 prefix warm (None = no hit).
+                "cached_tokens": um.get("cachedContentTokenCount"),
             }
 
         def _fmt_sources(chunks):
@@ -471,7 +491,7 @@ class ProvOpenAI(ProviderBase):
                 resp = None
                 for _ki, _k in enumerate(_keys):
                     resp = requests.post(url, headers=_hdr(_k), json=payload,
-                                         timeout=(10, 180), stream=True)
+                                         timeout=_http_to(config), stream=True)
                     if _quota_fault(resp.status_code, ""):
                         # stream body not read yet; 429 status alone is enough
                         _bench_and_log(_k, resp.status_code, "")
@@ -581,7 +601,7 @@ class ProvOpenAI(ProviderBase):
             resp = None
             for _ki, _k in enumerate(_keys):
                 resp = requests.post(url, headers=_hdr(_k), json=payload,
-                                     timeout=(10, 180))
+                                     timeout=_http_to(config))
                 if _quota_fault(resp.status_code, resp.text or ""):
                     _bench_and_log(_k, resp.status_code, resp.text or "")
                     continue
@@ -699,7 +719,7 @@ class ProvOpenAI(ProviderBase):
                 f"{base_url}/chat/completions",
                 headers=headers,
                 json=body,
-                timeout=(10, 180),
+                timeout=_http_to(config),
             )
             elapsed = round(time.time() - started, 3)
             data = resp.json()
