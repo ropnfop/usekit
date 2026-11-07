@@ -1296,6 +1296,25 @@ class EditorHandler(SimpleHTTPRequestHandler):
                 else:
                     timeout = min(int(payload.get("timeout", 10)), _exec_timeout_cap)
 
+                # 261105 magic comment: a script can ask for its own budget —
+                #   # uk:timeout=300      (seconds, capped at _magic_cap)
+                # anywhere in the first 40 lines. For long probes/batch jobs the
+                # keyword sniffing above cannot know about.
+                _magic_cap = 600
+                try:
+                    import re as _re_to
+                    # u.xpd("…") and the other u.x* helpers run a FILE: the editor
+                    # sees one line, never the file's own network calls or its
+                    # magic comment — give file runs the extended cap by default.
+                    if _re_to.match(r"\s*u\.x\w*\(", code) and timeout < _ai_timeout:
+                        timeout = _ai_timeout
+                    _head = "\n".join(code.splitlines()[:40])
+                    _m = _re_to.search(r"#\s*uk:timeout\s*=\s*(\d+)", _head)
+                    if _m:
+                        timeout = max(1, min(int(_m.group(1)), _magic_cap))
+                except Exception:
+                    pass
+
                 inputs  = list(payload.get("inputs", []))
 
                 # REPL 계열은 persistent ns, exec(File tmp)는 매번 새 ns

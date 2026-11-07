@@ -164,17 +164,29 @@ providers:
     # /models listed all of these AND each returned 200 with a matching
     # `model` field (no repoint). gemini-3.1-flash: 404, does not exist —
     # the 3.1 text line ships lite only.
+    #
+    # 261105 정비 (Google release notes 2026-10-08 + live editor probe):
+    #   - 3.7 Flash and 3.5 Flash are DEPRECATED. Google auto-routes
+    #     gemini-3.7-flash → gemini-3.8-flash and gemini-3.5-flash → gemini-3.6-flash.
+    #     The aliases stay for probes only — never chain them: G35F is G36F in
+    #     disguise (a "fallback" onto the same model), and G37F came back empty
+    #     in the editor chat (21:18, "(no response)").
+    #   - 2.5 cluster: works on OLD (legacy) keys only; NEW keys get nothing.
+    #     A ladder must run on 3.x alone — 2.5 is at most a last bonus rung.
+    #   - Status tags below: [chain] = safe for role ladders · [probe] = registry
+    #     only, verify before chaining · [legacy] = old keys only · [deprecated].
     models:
-      G37F:      "gemini-3.7-flash"               # GA 08-13
-      G36F:      "gemini-3.6-flash"               # GA 07-21
-      G35F:      "gemini-3.5-flash"               # GA
-      G35FL:     "gemini-3.5-flash-lite"          # GA 07-21
-      G31FL:     "gemini-3.1-flash-lite"          # GA (preview successor)
-      # --- 2.5 cluster: SHUTDOWN 2026-10-16. Kept only so an admin cell can
-      #     still reach them before the date; no role points here.
-      G25F:      "gemini-2.5-flash"
-      G25FL:     "gemini-2.5-flash-lite"
-      G25P:      "gemini-2.5-pro"                 # paid only (needs billing)
+      G38F:      "gemini-3.8-flash"               # [probe] newest Flash — verify on our key, then chain
+      G36F:      "gemini-3.6-flash"               # [chain] GA 07-21
+      G35FL:     "gemini-3.5-flash-lite"          # [chain] GA 07-21 — default lite
+      G31FL:     "gemini-3.1-flash-lite"          # [chain] GA (preview successor)
+      # --- deprecated 2026-10-08 (auto-routed by Google) — probe only, never chain
+      G37F:      "gemini-3.7-flash"               # [deprecated] → served by 3.8 Flash
+      G35F:      "gemini-3.5-flash"               # [deprecated] → served by 3.6 Flash (= G36F)
+      # --- 2.5 cluster: shut down 2026-10-16 for new keys; legacy keys still answer
+      G25F:      "gemini-2.5-flash"               # [legacy]
+      G25FL:     "gemini-2.5-flash-lite"          # [legacy]
+      G25P:      "gemini-2.5-pro"                 # [legacy] paid only (needs billing)
       # --- retired / deliberately absent ---
       # gemini-3.1-flash-lite-preview : superseded by G31FL. Same model, second
       #   id; keeping both would double-count one quota bucket as two.

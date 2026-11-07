@@ -898,6 +898,9 @@ def serve_chat_v2(
             "provider": prov,
             "model": model or "",
             "session_id": (session_box[0] if session_box else ""),
+            # 261102: token usage to the chat bubble (incl. meta = provider's raw
+            # usage_metadata — cachedContentTokenCount shows a cache hit)
+            "usage": r.get("usage") or {},
         }
     else:
         _record_call(0, "error", err_type="no_result", err_summary="no result")

@@ -438,6 +438,11 @@ class ProvOpenAI(ProviderBase):
                 # 261020: implicit-cache hit size — the only way to see whether
                 # a prompt change kept the L1/L2 prefix warm (None = no hit).
                 "cached_tokens": um.get("cachedContentTokenCount"),
+                # 261101 (pj01 운영 캐시 0 조사): the WHOLE usageMetadata as Google
+                # sent it — a newer model may report cache under another key
+                # (cacheTokensDetails · promptTokensDetails …); the four fields
+                # above would drop it silently. Small dict, rides LLM_CALL raw.
+                "usage_metadata": dict(um),
             }
 
         def _fmt_sources(chunks):

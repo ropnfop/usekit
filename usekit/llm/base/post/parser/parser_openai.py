@@ -153,6 +153,9 @@ def parse(raw: dict) -> dict:
         "total": usage_raw.get("total_tokens"),
         "cached": usage_raw.get("cached_tokens"),   # 261020 implicit-cache hit
     }
+    # 261101: Gemini native passes its raw usageMetadata through (diagnostics)
+    if usage_raw.get("usage_metadata"):
+        usage["meta"] = usage_raw.get("usage_metadata")
 
     status_code = raw.get("_status_code")
     ok = status_code == 200

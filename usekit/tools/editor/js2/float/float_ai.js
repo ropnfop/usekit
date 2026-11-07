@@ -645,6 +645,17 @@
                 + '</details>';
         }
         html += `<span style="color:${color};">${_esc(aiText)}</span>`;
+        // 261102: one small usage line — in · cache · out (cache = provider's
+        // cachedContentTokenCount; "캐시 없음" = the field never came back)
+        const us = (providerInfo && providerInfo.usage) || null;
+        if (us && (us.prompt || us.total || us.meta)) {
+          const m = us.meta || {};
+          const cached = m.cachedContentTokenCount ?? us.cached;
+          const cTxt = (cached == null) ? '캐시 없음' : `캐시 ${cached}`;
+          html += `<div style="margin-top:0.25rem;font-size:0.7rem;color:#6e7681;">`
+                + `in ${us.prompt ?? m.promptTokenCount ?? '?'} · ${cTxt} · out ${us.completion ?? m.candidatesTokenCount ?? '?'}`
+                + `</div>`;
+        }
         aiBody.innerHTML = html;
       }
 
