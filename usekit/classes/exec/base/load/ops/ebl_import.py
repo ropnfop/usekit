@@ -19,6 +19,28 @@ from usekit.classes.common.errors.helper_debug import log_and_raise
 from usekit.classes.common.utils.helper_keydata_path import search_keydata_first
 from usekit.classes.exec.base.load.sub.ebl_import_sub import route_to_importer
 
+import os
+
+# Resolved-path cache. The keydata search walks the whole tree with glob on
+# every call (measured ~30ms per ipb on a phone, x400 calls per chat turn).
+# A hit is re-checked with is_file(), so a moved/deleted file falls back to
+# a fresh search. Set USEKIT_IPB_FRESH=1 to bypass (old behaviour).
+_PATH_CACHE: Dict[tuple, Path] = {}
+
+
+def _ipb_fresh() -> bool:
+    return os.environ.get("USEKIT_IPB_FRESH", "") not in ("", "0")
+
+
+def clear_import_cache() -> None:
+    """Drop resolved paths (and the module cache in the pyp importer)."""
+    _PATH_CACHE.clear()
+    try:
+        from usekit.classes.exec.base.post.act.pyp.ebp_import_pyp import clear_module_cache
+        clear_module_cache()
+    except Exception:
+        pass
+
 
 # ===============================================================================
 # Parameter Filtering
@@ -139,7 +161,22 @@ def _resolve_import_path(p: dict) -> Path:
         if p.get("func"):
             print(f"  functions={p.get('func')}")
     
-    # Strategy 2/3: Unified search via helper_keydata_path
+    # Strategy 2/3: Unified search via helper_keydata_path (cached)
+    ckey = (effective_fmt, p["mod"], pattern, effective_loc, p.get("dir_path"),
+            p.get("cus"), p["walk"], p["case_sensitive"])
+    try:
+        hash(ckey)
+    except TypeError:
+        ckey = None  # unhashable part (e.g. list walk) - no caching
+    if ckey is not None and not _ipb_fresh():
+        hit = _PATH_CACHE.get(ckey)
+        if hit is not None:
+            if hit.is_file():
+                if p["debug"]:
+                    print(f"[IMPORT-OPS] path cache hit: {hit}")
+                return hit
+            _PATH_CACHE.pop(ckey, None)
+
     result = search_keydata_first(
         fmt=effective_fmt,
         mod=p["mod"],
@@ -171,6 +208,8 @@ def _resolve_import_path(p: dict) -> Path:
             f"(loc={effective_loc}, mod={p['mod']})"
         )
     
+    if ckey is not None:
+        _PATH_CACHE[ckey] = Path(result)
     return result
 
 
@@ -285,6 +324,7 @@ def import_operation(**kwargs) -> Any:
 
 __all__ = [
     "import_operation",
+    "clear_import_cache",
 ]
 
 

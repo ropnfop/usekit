@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import threading
 from collections import namedtuple
@@ -49,8 +50,21 @@ class _RowBase:
         return super().__contains__(key)
 
 
+# Row classes keyed by the raw column-name tuple. Building a namedtuple class
+# costs an eval() each time; doing it per ROW was ~0.6ms x thousands of rows
+# per chat turn on a phone. Same columns -> same class, so reuse it.
+_ROW_CLASSES: Dict[tuple, type] = {}
+
+
 def _row_factory(cursor, row):
-    raw = [d[0] for d in cursor.description]
+    raw = tuple(d[0] for d in cursor.description)
+    Row = _ROW_CLASSES.get(raw)
+    if Row is None:
+        Row = _ROW_CLASSES[raw] = _row_class(raw)
+    return Row(*row)
+
+
+def _row_class(raw):
     # SQLite names unaliased expressions with the expression text itself
     # (e.g. "COUNT(*)"), which is not a valid Python identifier and would
     # crash namedtuple. Sanitize: keep valid identifiers, replace the rest
@@ -65,8 +79,9 @@ def _row_factory(cursor, row):
         else:
             seen[key] = 0
         fields.append(key)
-    Row = type("Row", (_RowBase, namedtuple("Row", fields)), {"__slots__": ()})
-    return Row(*row)
+    if len(_ROW_CLASSES) > 512:
+        _ROW_CLASSES.clear()  # safety valve for ad-hoc query shapes
+    return type("Row", (_RowBase, namedtuple("Row", fields)), {"__slots__": ()})
 
 
 class DBHandler:
@@ -165,6 +180,17 @@ class DBHandler:
             conn.execute("PRAGMA busy_timeout=30000;")
         except Exception:
             pass  # best-effort; never block connection open
+        # 2026-11-10: rollback journal kept (WAL note above), but DELETE mode
+        # creates and unlinks the -journal file on EVERY commit, and file
+        # create/unlink is slow on Android FUSE (pj01 profile: 38 commits =
+        # ~1s per chat turn). TRUNCATE reuses the file; same durability.
+        # USEKIT_SQLITE_JOURNAL=DELETE restores the old mode.
+        try:
+            _jm = (os.environ.get("USEKIT_SQLITE_JOURNAL") or "TRUNCATE").strip().upper()
+            if _jm in ("DELETE", "TRUNCATE", "PERSIST"):
+                conn.execute(f"PRAGMA journal_mode={_jm};")
+        except Exception:
+            pass
         self._conn = conn
         self._cursor = conn.cursor()
         self._db_path = db_path

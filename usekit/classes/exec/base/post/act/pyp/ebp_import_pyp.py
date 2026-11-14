@@ -15,6 +15,7 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import os
 import sys
 import importlib.util
 
@@ -249,6 +250,45 @@ def call(func_path: str, *args, **kwargs) -> Any:
 # Module Import
 # ===============================================================================
 
+# Module cache: path -> (signature, module). Before this every ipb() call
+# re-executed the file (and every ipb() at its top level, recursively), so a
+# chat turn ran ~600 exec_module calls. A hit is only served while the file's
+# (mtime_ns, size) is unchanged, so editing a .py still takes effect on the
+# next call. A module may list extra files it reads at import time in
+# __ipb_deps__ (e.g. prompt .md files); their mtimes join the signature.
+# A module can opt out with __ipb_nocache__ = True.
+# USEKIT_IPB_FRESH=1 disables the cache (old behaviour).
+_MODULE_CACHE: Dict[str, tuple] = {}
+
+# One re-entrant lock around cache MISSES only (hits stay lock-free). Without
+# it a startup prewarm thread and the first request could exec the same file
+# twice and end up holding two different module objects. Re-entrant because a
+# module's top level often ipb()s others on the same thread.
+import threading as _threading
+_MODULE_LOCK = _threading.RLock()
+
+
+def clear_module_cache() -> None:
+    _MODULE_CACHE.clear()
+
+
+def _file_sig(fp) -> tuple:
+    try:
+        st = os.stat(fp)
+        return (st.st_mtime_ns, st.st_size)
+    except OSError:
+        return (None, None)
+
+
+def _module_sig(path: Path, module: Any = None) -> tuple:
+    sig = [_file_sig(path)]
+    deps = getattr(module, "__ipb_deps__", None) if module is not None else None
+    if deps:
+        for d in deps:
+            sig.append((str(d), _file_sig(d)))
+    return tuple(sig)
+
+
 def _import_module(path: Path, debug: bool = False) -> Any:
     """
     Import a Python module from file path.
@@ -267,7 +307,33 @@ def _import_module(path: Path, debug: bool = False) -> Any:
     """
     
     module_name = path.stem
+    fresh = os.environ.get("USEKIT_IPB_FRESH", "") not in ("", "0")
+    ckey = str(path)
+
+    if not fresh:
+        hit = _MODULE_CACHE.get(ckey)
+        if hit is not None:
+            sig, cached = hit
+            if sig == _module_sig(path, cached):
+                if debug:
+                    print(f"[IMPORT-PYP] module cache hit: {module_name}")
+                sys.modules[module_name] = cached
+                _IMPORT_REGISTRY[module_name] = cached
+                return cached
+            _MODULE_CACHE.pop(ckey, None)
     
+    with _MODULE_LOCK:
+        if not fresh:
+            # another thread may have finished this file while we waited
+            hit = _MODULE_CACHE.get(ckey)
+            if hit is not None and hit[0] == _module_sig(path, hit[1]):
+                sys.modules[module_name] = hit[1]
+                _IMPORT_REGISTRY[module_name] = hit[1]
+                return hit[1]
+        return _exec_fresh(path, module_name, ckey, fresh, debug)
+
+
+def _exec_fresh(path: Path, module_name: str, ckey: str, fresh: bool, debug: bool) -> Any:
     if debug:
         print(f"[IMPORT-PYP] Loading module: {module_name}")
     
@@ -287,6 +353,11 @@ def _import_module(path: Path, debug: bool = False) -> Any:
     
     # Register in our registry
     _IMPORT_REGISTRY[module_name] = module
+
+    # Cache only after a clean exec (a failed exec raises above and is never
+    # cached). Signature is taken now so __ipb_deps__ set at import counts.
+    if not fresh and not getattr(module, "__ipb_nocache__", False):
+        _MODULE_CACHE[ckey] = (_module_sig(path, module), module)
     
     if debug:
         print(f"[IMPORT-PYP] Module loaded: {module_name}")

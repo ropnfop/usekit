@@ -505,6 +505,12 @@ class ProvOpenAI(ProviderBase):
                         except Exception:
                             pass
                         continue
+                    # 261110: sticky good key, as the blocking path does
+                    if resp.status_code == 200 and _pool and _pool_keys():
+                        try:
+                            _key_cursor["i"] = _pool_keys().index(_k)
+                        except ValueError:
+                            pass
                     break
                 if resp.status_code != 200:
                     _body = ""
@@ -582,7 +588,11 @@ class ProvOpenAI(ProviderBase):
                               f"finish={finish} usage={usage}", file=_sys.stderr)
                     except Exception:
                         pass
-                    return None
+                    # 261110: same failure shape as the blocking path — a bare
+                    # None left _native_fail unset, so the caller saw "gemini
+                    # native call failed" instead of "empty response" and its
+                    # same-model empty retry never fired.
+                    return _fail(200, "empty response")
                 # Append the REAL search sources (stream them in + keep in content).
                 _src = _fmt_sources(grounding_chunks)
                 if not _src and config.get("search"):

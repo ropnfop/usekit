@@ -31,6 +31,47 @@ from usekit.classes.exec.base.init.wrap.pyp.ebi_wrap_pyp import (
 # PypSimple class - Ultra-short interface with alias support
 # ===============================================================================
 
+
+# ── ipb fast path ────────────────────────────────────────────────────────────
+import os as _os
+import sys as _sys
+import types as _types
+
+_IPB_FAST = {}   # (name, dir_path, cus) -> module file path (module cache key)
+
+
+def _ipb_fast_key(name, dir_path, keydata, cus, kwargs):
+    if kwargs or keydata is not None or not isinstance(name, str) or ":" in name:
+        return None
+    if _os.environ.get("USEKIT_IPB_FRESH", "") not in ("", "0"):
+        return None
+    return (name, dir_path, cus)
+
+
+def _ipb_fast_get(key):
+    fp = _IPB_FAST.get(key)
+    if fp is None:
+        return None
+    try:
+        from usekit.classes.exec.base.post.act.pyp import ebp_import_pyp as _imp
+        hit = _imp._MODULE_CACHE.get(fp)
+        if hit is None:
+            return None
+        sig, mod = hit
+        if sig != _imp._module_sig(fp, mod):
+            return None          # file changed -> slow path re-executes it
+        _sys.modules[mod.__name__] = mod
+        return mod
+    except Exception:
+        return None
+
+
+def _ipb_fast_put(key, result):
+    if isinstance(result, _types.ModuleType):
+        fp = getattr(result, "__file__", None)
+        if fp:
+            _IPB_FAST[key] = str(fp)
+
 class PypExecSimple:
     """
     Ultra-short pyp wrapper with full alias support
@@ -104,7 +145,19 @@ class PypExecSimple:
     @staticmethod
     def ipb(name=None, dir_path=None, keydata=None, cus=None, **kwargs):
         """import pyp base : supports positional, keyword, and alias (nm, dp, kd)"""
-        return _wrap_exec_operation(import_pyp_base)(name, dir_path, keydata, cus, **kwargs)
+        # Fast path (2026-11-10): a plain u.ipb("pkg.mod") that was already
+        # imported skips the param normalize / path resolve / route layers
+        # (~1ms each on a phone, x300+ calls per pj01 chat turn) and goes
+        # straight to the module cache, with the same mtime/size check.
+        key = _ipb_fast_key(name, dir_path, keydata, cus, kwargs)
+        if key is not None:
+            mod = _ipb_fast_get(key)
+            if mod is not None:
+                return mod
+        result = _wrap_exec_operation(import_pyp_base)(name, dir_path, keydata, cus, **kwargs)
+        if key is not None:
+            _ipb_fast_put(key, result)
+        return result
 
     @staticmethod
     def ips(name=None, dir_path=None, keydata=None, cus=None, **kwargs):

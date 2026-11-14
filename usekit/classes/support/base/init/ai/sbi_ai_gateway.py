@@ -394,9 +394,14 @@ def _adapter_ua(
     # Set EVERY call (ua's config is sticky across conn()), caller override wins.
     conn["http_timeout"] = (config or {}).get("http_timeout") or timeout
 
+    # 261110 (pj01 말풍선 스트리밍): on_delta is a chat-time arg — _build_ua_conn
+    # strips it from the connection, so hand it to the call itself. Callable
+    # only; anything else keeps the blocking call exactly as before.
+    _od = (config or {}).get("on_delta")
     try:
         ua.conn(provider, **conn)
-        result = ua.run(prompt)  # single call — no parallel, no recursion
+        result = (ua.run(prompt, on_delta=_od) if callable(_od)
+                  else ua.run(prompt))  # single call — no parallel, no recursion
     except Exception as e:
         return _result(ok=False, provider=provider, model=conn.get("model", ""),
                        fatal=False, error=f"ua call failed: {e}",
@@ -505,6 +510,11 @@ def _adapter_isolated(
             cfg["base_url"] = _u
     cfg.setdefault("images", [])
     cfg.setdefault("search", False)
+    # 261110 (pj01 말풍선 스트리밍): same hand-off as _adapter_ua — the adapter
+    # streams (streamGenerateContent) when cfg carries a callable on_delta.
+    _od = (config or {}).get("on_delta")
+    if callable(_od):
+        cfg["on_delta"] = _od
 
     adapter = None
     try:
